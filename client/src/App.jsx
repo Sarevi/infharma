@@ -1,31 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
+import {
   // Iconos Generales de UI
   Search, ChevronRight, ChevronDown, X, Plus, Minus, Trash2, Save,
   Edit3, LogOut, Settings, ExternalLink, XCircle, GripVertical,
   Menu, MoreHorizontal, Check, AlertCircle, HelpCircle,
-  ArrowUpRight, ArrowLeft, ArrowRight,
-  
+  ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle,
+
   // Herramientas
   Printer, Calculator, CalendarCheck, Phone,
-  
+
   // Iconos Médicos y Clínicos
-  Stethoscope, Syringe, Pill, Activity, HeartPulse, 
-  Thermometer, Microscope, Biohazard, Droplet, Brain, 
-  Bone, Eye, Ear, Baby, Accessibility, TestTube, Dna, 
+  Stethoscope, Syringe, Pill, Activity, HeartPulse,
+  Thermometer, Microscope, Biohazard, Droplet, Brain,
+  Bone, Eye, Ear, Baby, Accessibility, TestTube, Dna,
   Heart, Scissors, Scale,
-  
+
   // Iconos para Secciones / Contexto
-  FileText, AlertTriangle, CheckCircle, Clock, 
-  Sparkles, Zap, Flame, Snowflake, Sun, 
-  Coffee, Bed, Music, Anchor, StopCircle, 
+  FileText, AlertTriangle, CheckCircle, Clock,
+  Sparkles, Zap, Flame, Snowflake, Sun,
+  Coffee, Bed, Music, Anchor, StopCircle,
   Recycle, Plane, ThumbsUp, MapPin, Timer,
   FolderPlus, FolderMinus, MoveHorizontal, MoveVertical,
   Bold, Italic, Underline, Wind,
-  
+
   // ESTADÍSTICAS Y GRÁFICAS
   BarChart3, History
 } from 'lucide-react';
+import ChatLayout from './components/Chat/ChatLayout';
 
 // --- MAPA DE ICONOS ---
 const ICON_MAP = {
@@ -485,6 +486,7 @@ const App = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('pro');
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
@@ -608,6 +610,20 @@ const App = () => {
           </main>
         </div>
       )}
+
+      {/* Botón flotante del chat - solo visible cuando está autenticado */}
+      {isAuthenticated && !showChat && (
+        <button
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center z-40 no-print"
+          title="Abrir Chat"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Chat Layout */}
+      {showChat && <ChatLayout onClose={() => setShowChat(false)} />}
     </>
   );
 };
