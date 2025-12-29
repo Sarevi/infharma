@@ -1,31 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
+import {
   // Iconos Generales de UI
   Search, ChevronRight, ChevronDown, X, Plus, Minus, Trash2, Save,
   Edit3, LogOut, Settings, ExternalLink, XCircle, GripVertical,
   Menu, MoreHorizontal, Check, AlertCircle, HelpCircle,
-  ArrowUpRight, ArrowLeft, ArrowRight,
-  
+  ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle,
+
   // Herramientas
   Printer, Calculator, CalendarCheck, Phone,
-  
+
   // Iconos Médicos y Clínicos
-  Stethoscope, Syringe, Pill, Activity, HeartPulse, 
-  Thermometer, Microscope, Biohazard, Droplet, Brain, 
-  Bone, Eye, Ear, Baby, Accessibility, TestTube, Dna, 
+  Stethoscope, Syringe, Pill, Activity, HeartPulse,
+  Thermometer, Microscope, Biohazard, Droplet, Brain,
+  Bone, Eye, Ear, Baby, Accessibility, TestTube, Dna,
   Heart, Scissors, Scale,
-  
+
   // Iconos para Secciones / Contexto
-  FileText, AlertTriangle, CheckCircle, Clock, 
-  Sparkles, Zap, Flame, Snowflake, Sun, 
-  Coffee, Bed, Music, Anchor, StopCircle, 
+  FileText, AlertTriangle, CheckCircle, Clock,
+  Sparkles, Zap, Flame, Snowflake, Sun,
+  Coffee, Bed, Music, Anchor, StopCircle,
   Recycle, Plane, ThumbsUp, MapPin, Timer,
   FolderPlus, FolderMinus, MoveHorizontal, MoveVertical,
   Bold, Italic, Underline, Wind,
-  
+
   // ESTADÍSTICAS Y GRÁFICAS
   BarChart3, History
 } from 'lucide-react';
+import ChatLayout from './components/Chat/ChatLayout';
 
 // --- MAPA DE ICONOS ---
 const ICON_MAP = {
@@ -308,11 +309,39 @@ const SettingsModal = ({ isOpen, onClose, settings, onSave }) => {
   );
 };
 
-const LoginPage = ({ onLogin }) => {
-  const [user, setUser] = useState('');
-  const [pass, setPass] = useState('');
+const LoginPage = () => {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const handleAuth = () => { if(user === 'admin' && pass === 'admin') onLogin('admin'); else if(user === 'user' && pass === 'user') onLogin('viewer'); else { setError('Credenciales incorrectas'); setTimeout(() => setError(''), 3000); } };
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAuth = async () => {
+    if (!email || !password) {
+      setError('Por favor ingresa email y contraseña');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    const result = await login(email, password);
+
+    if (!result.success) {
+      setError(result.message || 'Error al iniciar sesión');
+      setTimeout(() => setError(''), 3000);
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleAuth();
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
       <div className="md:w-1/2 bg-slate-900 text-white p-12 flex flex-col justify-between relative overflow-hidden">
@@ -322,11 +351,37 @@ const LoginPage = ({ onLogin }) => {
       <div className="md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
         <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-xl">
           <h2 className="text-3xl font-bold text-center">Iniciar Sesión</h2>
-          <input type="text" value={user} onChange={e => setUser(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Usuario"/>
-          <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Contraseña"/>
-          {error && <div className="text-rose-500 text-center">{error}</div>}
-          <button onClick={handleAuth} className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">Acceder</button>
-          <div className="text-center text-xs text-slate-400 mt-4"><p>Admin: admin / admin</p><p>Lector: user / user</p></div>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-full p-3 border rounded-lg"
+            placeholder="Email"
+            disabled={isLoading}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-full p-3 border rounded-lg"
+            placeholder="Contraseña"
+            disabled={isLoading}
+          />
+          {error && <div className="text-rose-500 text-center text-sm">{error}</div>}
+          <button
+            onClick={handleAuth}
+            disabled={isLoading}
+            className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Iniciando sesión...' : 'Acceder'}
+          </button>
+          <div className="text-center text-xs text-slate-400 mt-4">
+            <p>Usuarios de prueba:</p>
+            <p className="mt-2">admin@infharma.com / admin123</p>
+            <p>maria.garcia@hospital.com / maria123</p>
+          </div>
         </div>
       </div>
     </div>
@@ -485,6 +540,7 @@ const App = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('pro');
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
@@ -608,6 +664,20 @@ const App = () => {
           </main>
         </div>
       )}
+
+      {/* Botón flotante del chat - solo visible cuando está autenticado */}
+      {isAuthenticated && !showChat && (
+        <button
+          onClick={() => setShowChat(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center z-40 no-print"
+          title="Abrir Chat"
+        >
+          <MessageCircle className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Chat Layout */}
+      {showChat && <ChatLayout onClose={() => setShowChat(false)} />}
     </>
   );
 };
