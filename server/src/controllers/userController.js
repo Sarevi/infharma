@@ -1,4 +1,4 @@
-import { User } from '../models/index.js';
+import { User, ContactRequest } from '../models/index.js';
 import { Op } from 'sequelize';
 
 // Get all users (for search)
@@ -27,10 +27,45 @@ export const getUsers = async (req, res) => {
       order: [['name', 'ASC']],
     });
 
+    // Get contact status for each user
+    const usersWithContactStatus = await Promise.all(
+      users.map(async (user) => {
+        const contactRequest = await ContactRequest.findOne({
+          where: {
+            [Op.or]: [
+              { senderId: req.user.id, receiverId: user.id },
+              { senderId: user.id, receiverId: req.user.id },
+            ],
+          },
+          attributes: ['id', 'status', 'senderId', 'receiverId'],
+        });
+
+        const profile = user.getPublicProfile();
+
+        if (!contactRequest) {
+          return {
+            ...profile,
+            contactStatus: 'none',
+            canSendRequest: true,
+            canChat: false,
+          };
+        }
+
+        return {
+          ...profile,
+          contactStatus: contactRequest.status,
+          contactRequestId: contactRequest.id,
+          isSender: contactRequest.senderId === req.user.id,
+          canSendRequest: contactRequest.status === 'rejected',
+          canChat: contactRequest.status === 'accepted',
+        };
+      })
+    );
+
     res.json({
       success: true,
       data: {
-        users: users.map(u => u.getPublicProfile()),
+        users: usersWithContactStatus,
         total: users.length,
       },
     });

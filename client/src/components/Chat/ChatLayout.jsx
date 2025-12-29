@@ -4,6 +4,7 @@ import { useChat } from '../../context/ChatContext';
 import ConversationList from './ConversationList';
 import ChatWindow from './ChatWindow';
 import NewConversationModal from './NewConversationModal';
+import PendingRequests from './PendingRequests';
 
 const ChatLayout = ({ onClose }) => {
   const {
@@ -64,11 +65,16 @@ const ChatLayout = ({ onClose }) => {
 
         {/* Chat content */}
         <div className="flex-1 flex overflow-hidden">
-          <ConversationList
-            conversations={conversations}
-            activeConversation={activeConversation}
-            onSelectConversation={handleSelectConversation}
-          />
+          {/* Left panel with pending requests and conversations */}
+          <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+            <PendingRequests />
+            <ConversationList
+              conversations={conversations}
+              activeConversation={activeConversation}
+              onSelectConversation={handleSelectConversation}
+            />
+          </div>
+          {/* Right panel with chat window */}
           <ChatWindow conversation={selectedConversation} />
         </div>
       </div>

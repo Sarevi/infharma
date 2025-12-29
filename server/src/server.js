@@ -19,6 +19,7 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
+import contactRoutes from './routes/contacts.js';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -31,7 +32,10 @@ const httpServer = createServer(app);
 const PORT = process.env.PORT || 3001;
 
 // Initialize Socket.io
-initializeSocket(httpServer);
+const io = initializeSocket(httpServer);
+
+// Make io accessible to routes
+app.set('io', io);
 
 // Middleware
 app.use(helmet({
@@ -77,6 +81,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
+app.use('/api/contacts', contactRoutes);
 
 // Error handling
 app.use(notFound);
