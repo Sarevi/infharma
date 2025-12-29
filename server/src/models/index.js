@@ -86,25 +86,25 @@ Message.hasMany(Message, {
 
 // ContactRequest -> User (sender)
 ContactRequest.belongsTo(User, {
-  foreignKey: 'senderId',
+  foreignKey: 'sender_id',
   as: 'sender',
 });
 
 // ContactRequest -> User (receiver)
 ContactRequest.belongsTo(User, {
-  foreignKey: 'receiverId',
+  foreignKey: 'receiver_id',
   as: 'receiver',
 });
 
 // User -> ContactRequest (sent)
 User.hasMany(ContactRequest, {
-  foreignKey: 'senderId',
+  foreignKey: 'sender_id',
   as: 'sentContactRequests',
 });
 
 // User -> ContactRequest (received)
 User.hasMany(ContactRequest, {
-  foreignKey: 'receiverId',
+  foreignKey: 'receiver_id',
   as: 'receivedContactRequests',
 });
 
