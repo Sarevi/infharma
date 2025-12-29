@@ -595,7 +595,7 @@ const App = () => {
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
       <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...customAreas])).sort()}/>
       
-      {!isAuthenticated ? <LoginPage onLogin={handleLogin}/> : (
+      {!isAuthenticated ? <LoginPage /> : (
         <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
           <aside className="w-[260px] bg-white border-r border-slate-200 flex flex-col z-20 no-print">
             <div className="h-16 flex items-center px-6 border-b cursor-pointer" onClick={()=>setView('home')}><div className="w-8 h-8 bg-indigo-600 rounded mr-3 flex items-center justify-center text-white"><Stethoscope size={18}/></div><span className="font-bold">InFHarma</span></div>
