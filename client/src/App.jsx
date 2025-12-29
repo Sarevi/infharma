@@ -526,7 +526,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
 
 // --- APP ---
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, user, logout: authLogout } = useAuth();
   const [userRole, setUserRole] = useState(null); 
   const [view, setView] = useState('home'); 
   const [selectedDrug, setSelectedDrug] = useState(null);
@@ -547,8 +547,8 @@ const App = () => {
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
   useEffect(() => { localStorage.setItem('infharma_custom_areas', JSON.stringify(customAreas)); }, [customAreas]);
 
-  const handleLogin = (role) => { setUserRole(role); setIsAuthenticated(true); };
-  const handleLogout = () => { setIsAuthenticated(false); setUserRole(null); setView('home'); setIsEditing(false); };
+  const handleLogin = (role) => { setUserRole(role); };
+  const handleLogout = () => { authLogout(); setUserRole(null); setView('home'); setIsEditing(false); };
   const handleSaveSettings = (newSettings) => { setSettings(newSettings); };
   const handleSaveDrug = (d) => { const now = new Date(); const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`; const toSave = { ...d, updatedAt: dateStr }; setData(prev => { const ex = prev.find(x=>x.id===toSave.id); return ex ? prev.map(x=>x.id===toSave.id?toSave:x) : [...prev, toSave]; }); setIsCreating(false); setIsEditing(false); };
   const handleCancelEdit = () => { if(isCreating){ setIsCreating(false); setIsEditing(false); setView('home'); setSelectedDrug(null); } else { const orig = data.find(d=>d.id===selectedDrug.id); if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig))); setIsEditing(false); }};
