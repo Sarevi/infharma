@@ -528,8 +528,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
 // --- APP ---
 const App = () => {
   const { isAuthenticated, user, logout: authLogout } = useAuth();
-  const { totalUnreadCount, pendingRequests } = useChat();
-  const [userRole, setUserRole] = useState(null); 
+  const { totalUnreadCount, pendingRequests } = useChat(); 
   const [view, setView] = useState('home'); 
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -549,8 +548,7 @@ const App = () => {
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
   useEffect(() => { localStorage.setItem('infharma_custom_areas', JSON.stringify(customAreas)); }, [customAreas]);
 
-  const handleLogin = (role) => { setUserRole(role); };
-  const handleLogout = () => { authLogout(); setUserRole(null); setView('home'); setIsEditing(false); };
+  const handleLogout = () => { authLogout(); setView('home'); setIsEditing(false); };
   const handleSaveSettings = (newSettings) => { setSettings(newSettings); };
   const handleSaveDrug = (d) => { const now = new Date(); const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`; const toSave = { ...d, updatedAt: dateStr }; setData(prev => { const ex = prev.find(x=>x.id===toSave.id); return ex ? prev.map(x=>x.id===toSave.id?toSave:x) : [...prev, toSave]; }); setIsCreating(false); setIsEditing(false); };
   const handleCancelEdit = () => { if(isCreating){ setIsCreating(false); setIsEditing(false); setView('home'); setSelectedDrug(null); } else { const orig = data.find(d=>d.id===selectedDrug.id); if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig))); setIsEditing(false); }};
@@ -610,17 +608,17 @@ const App = () => {
                   return (
                     <div key={sys} className="mb-1">
                        <button onClick={()=>setExpandedAreas({...expandedAreas,[sys]:!expandedAreas[sys]})} className="flex items-center justify-between w-full px-2 py-2 text-left hover:bg-slate-50 rounded"><div className="flex items-center text-sm font-bold text-slate-600"><FolderPlus size={16} className="mr-2 text-slate-400"/>{sys}</div>{isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}</button>
-                       {isOpen && <div className="pl-6 mt-1 space-y-1">{drugs.map(d=><button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-sm text-slate-500 hover:text-indigo-600 py-1">{d.name}</button>)}{userRole==='admin' && <button onClick={()=>handleAddNew(sys)} className="text-xs text-indigo-400 flex items-center mt-2 hover:text-indigo-600"><Plus size={12} className="mr-1"/> Añadir Fármaco</button>}</div>}
+                       {isOpen && <div className="pl-6 mt-1 space-y-1">{drugs.map(d=><button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-sm text-slate-500 hover:text-indigo-600 py-1">{d.name}</button>)}{user?.role==='admin' && <button onClick={()=>handleAddNew(sys)} className="text-xs text-indigo-400 flex items-center mt-2 hover:text-indigo-600"><Plus size={12} className="mr-1"/> Añadir Fármaco</button>}</div>}
                     </div>
                   )
                })}
             </div>
-            <div className="p-4 border-t space-y-2">{userRole==='admin' && <button onClick={()=>setShowSettings(true)} className="flex items-center text-sm w-full p-2 hover:bg-slate-50 rounded"><Settings size={16} className="mr-2"/> Configuración</button>}<button onClick={handleLogout} className="flex items-center text-sm w-full p-2 hover:bg-rose-50 text-rose-600 rounded"><LogOut size={16} className="mr-2"/> Salir</button></div>
+            <div className="p-4 border-t space-y-2">{user?.role==='admin' && <button onClick={()=>setShowSettings(true)} className="flex items-center text-sm w-full p-2 hover:bg-slate-50 rounded"><Settings size={16} className="mr-2"/> Configuración</button>}<button onClick={handleLogout} className="flex items-center text-sm w-full p-2 hover:bg-rose-50 text-rose-600 rounded"><LogOut size={16} className="mr-2"/> Salir</button></div>
           </aside>
           <main className="flex-1 flex flex-col overflow-hidden relative bg-white">
             <header className="h-16 flex items-center justify-between px-8 border-b bg-white/80 backdrop-blur no-print">
                <div className="text-sm text-slate-500">{view==='detail' && <button onClick={()=>setView('home')} className="hover:text-slate-900 flex items-center"><ArrowLeft size={14} className="mr-1"/> Volver</button>}</div>
-               <div className="flex gap-2">{view==='detail' && userRole==='admin' && <>{isEditing ? <><button onClick={handleCancelEdit} className="px-3 py-1.5 border rounded text-sm hover:bg-slate-50">Cancelar</button><button onClick={()=>handleSaveDrug(selectedDrug)} className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center"><Save size={14} className="mr-2"/> Guardar</button></> : <button onClick={()=>setIsEditing(true)} className="px-3 py-1.5 border rounded text-sm hover:bg-slate-50 flex items-center"><Edit3 size={14} className="mr-2"/> Editar</button>}</>}</div>
+               <div className="flex gap-2">{view==='detail' && user?.role==='admin' && <>{isEditing ? <><button onClick={handleCancelEdit} className="px-3 py-1.5 border rounded text-sm hover:bg-slate-50">Cancelar</button><button onClick={()=>handleSaveDrug(selectedDrug)} className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center"><Save size={14} className="mr-2"/> Guardar</button></> : <button onClick={()=>setIsEditing(true)} className="px-3 py-1.5 border rounded text-sm hover:bg-slate-50 flex items-center"><Edit3 size={14} className="mr-2"/> Editar</button>}</>}</div>
             </header>
             <div className="flex-1 overflow-y-auto bg-slate-50">
                {view === 'home' ? (
@@ -628,7 +626,7 @@ const App = () => {
                     <h1 className="text-4xl font-extrabold text-slate-900 mb-2">{settings.hospitalName}</h1>
                     <p className="text-slate-500 mb-10">Panel de Control • {settings.pharmacistName}</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-                       {userRole === 'admin' ? (<div onClick={() => setShowCreateArea(true)} className="bg-indigo-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:bg-indigo-700 transition-colors flex flex-col justify-between min-h-[160px] relative overflow-hidden group"><div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110"><FolderPlus size={100}/></div><div className="p-3 bg-white/20 w-fit rounded-lg mb-4"><Plus size={24}/></div><div><p className="font-bold text-lg">Nueva Área</p><p className="text-indigo-200 text-sm">Crear carpeta</p></div></div>) : <div className="bg-slate-200 rounded-xl p-6 min-h-[160px] flex items-center justify-center text-slate-400">Solo Admin</div>}
+                       {user?.role === 'admin' ? (<div onClick={() => setShowCreateArea(true)} className="bg-indigo-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:bg-indigo-700 transition-colors flex flex-col justify-between min-h-[160px] relative overflow-hidden group"><div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110"><FolderPlus size={100}/></div><div className="p-3 bg-white/20 w-fit rounded-lg mb-4"><Plus size={24}/></div><div><p className="font-bold text-lg">Nueva Área</p><p className="text-indigo-200 text-sm">Crear carpeta</p></div></div>) : <div className="bg-slate-200 rounded-xl p-6 min-h-[160px] flex items-center justify-center text-slate-400">Solo Admin</div>}
                        <div onClick={() => handleOpenLink('https://www.aemps.gob.es/medicamentos-de-uso-humano/')} className="bg-white rounded-xl p-6 border shadow-sm cursor-pointer hover:border-rose-300 hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] group"><div className="flex justify-between items-start"><div className="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-100 transition-colors"><AlertCircle size={24}/></div><ExternalLink size={16} className="text-slate-300"/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg leading-tight">Alertas Seguridad</p><p className="text-slate-500 text-sm mt-1">Web AEMPS Humana</p></div></div>
                        <div onClick={() => handleOpenLink('https://cima.aemps.es/cima/publico/listadesabastecimiento.html')} className="bg-white rounded-xl p-6 border shadow-sm cursor-pointer hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] group"><div className="flex justify-between items-start"><div className="p-3 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-100 transition-colors"><AlertTriangle size={24}/></div><ExternalLink size={16} className="text-slate-300"/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg">Desabastecimiento</p><p className="text-slate-500 text-sm mt-1">Problemas Suministro</p></div></div>
                        <div className="bg-white rounded-xl p-6 border shadow-sm flex flex-col justify-between min-h-[160px]"><div className="p-3 bg-sky-50 text-sky-600 rounded-lg w-fit"><BarChart3 size={24}/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg">Estadísticas</p><p className="text-slate-500 text-sm mt-1">{data.length} Fichas activas</p></div></div>
@@ -672,7 +670,7 @@ const App = () => {
       {isAuthenticated && !showChat && (
         <button
           onClick={() => setShowChat(true)}
-          className="fixed bottom-8 right-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
+          className="fixed bottom-8 left-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
           style={{ zIndex: 9999 }}
           title="Abrir Chat"
         >

@@ -33,11 +33,11 @@ export const getUsers = async (req, res) => {
         const contactRequest = await ContactRequest.findOne({
           where: {
             [Op.or]: [
-              { senderId: req.user.id, receiverId: user.id },
-              { senderId: user.id, receiverId: req.user.id },
+              { sender_id: req.user.id, receiver_id: user.id },
+              { sender_id: user.id, receiver_id: req.user.id },
             ],
           },
-          attributes: ['id', 'status', 'senderId', 'receiverId'],
+          attributes: ['id', 'status', 'sender_id', 'receiver_id'],
         });
 
         const profile = user.getPublicProfile();
@@ -55,7 +55,7 @@ export const getUsers = async (req, res) => {
           ...profile,
           contactStatus: contactRequest.status,
           contactRequestId: contactRequest.id,
-          isSender: contactRequest.senderId === req.user.id,
+          isSender: contactRequest.sender_id === req.user.id,
           canSendRequest: contactRequest.status === 'rejected',
           canChat: contactRequest.status === 'accepted',
         };
