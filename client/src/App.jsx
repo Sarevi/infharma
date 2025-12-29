@@ -309,11 +309,39 @@ const SettingsModal = ({ isOpen, onClose, settings, onSave }) => {
   );
 };
 
-const LoginPage = ({ onLogin }) => {
-  const [user, setUser] = useState('');
-  const [pass, setPass] = useState('');
+const LoginPage = () => {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const handleAuth = () => { if(user === 'admin' && pass === 'admin') onLogin('admin'); else if(user === 'user' && pass === 'user') onLogin('viewer'); else { setError('Credenciales incorrectas'); setTimeout(() => setError(''), 3000); } };
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleAuth = async () => {
+    if (!email || !password) {
+      setError('Por favor ingresa email y contraseña');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    const result = await login(email, password);
+
+    if (!result.success) {
+      setError(result.message || 'Error al iniciar sesión');
+      setTimeout(() => setError(''), 3000);
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleAuth();
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-white">
       <div className="md:w-1/2 bg-slate-900 text-white p-12 flex flex-col justify-between relative overflow-hidden">
@@ -323,11 +351,37 @@ const LoginPage = ({ onLogin }) => {
       <div className="md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
         <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-xl">
           <h2 className="text-3xl font-bold text-center">Iniciar Sesión</h2>
-          <input type="text" value={user} onChange={e => setUser(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Usuario"/>
-          <input type="password" value={pass} onChange={e => setPass(e.target.value)} className="w-full p-3 border rounded-lg" placeholder="Contraseña"/>
-          {error && <div className="text-rose-500 text-center">{error}</div>}
-          <button onClick={handleAuth} className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">Acceder</button>
-          <div className="text-center text-xs text-slate-400 mt-4"><p>Admin: admin / admin</p><p>Lector: user / user</p></div>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-full p-3 border rounded-lg"
+            placeholder="Email"
+            disabled={isLoading}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            onKeyPress={handleKeyPress}
+            className="w-full p-3 border rounded-lg"
+            placeholder="Contraseña"
+            disabled={isLoading}
+          />
+          {error && <div className="text-rose-500 text-center text-sm">{error}</div>}
+          <button
+            onClick={handleAuth}
+            disabled={isLoading}
+            className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {isLoading ? 'Iniciando sesión...' : 'Acceder'}
+          </button>
+          <div className="text-center text-xs text-slate-400 mt-4">
+            <p>Usuarios de prueba:</p>
+            <p className="mt-2">admin@infharma.com / admin123</p>
+            <p>maria.garcia@hospital.com / maria123</p>
+          </div>
         </div>
       </div>
     </div>
