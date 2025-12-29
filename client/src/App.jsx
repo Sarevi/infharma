@@ -27,6 +27,7 @@ import {
   BarChart3, History
 } from 'lucide-react';
 import ChatLayout from './components/Chat/ChatLayout';
+import { useAuth } from './context/AuthContext';
 
 // --- MAPA DE ICONOS ---
 const ICON_MAP = {
