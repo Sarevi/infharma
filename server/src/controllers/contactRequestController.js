@@ -30,8 +30,8 @@ export const sendContactRequest = async (req, res) => {
     const existingRequest = await ContactRequest.findOne({
       where: {
         [Op.or]: [
-          { senderId, receiverId },
-          { senderId: receiverId, receiverId: senderId },
+          { sender_id: senderId, receiver_id: receiverId },
+          { sender_id: receiverId, receiver_id: senderId },
         ],
         status: { [Op.in]: ['pending', 'accepted'] },
       },
@@ -52,8 +52,8 @@ export const sendContactRequest = async (req, res) => {
 
     // Crear la solicitud
     const request = await ContactRequest.create({
-      senderId,
-      receiverId,
+      sender_id: senderId,
+      receiver_id: receiverId,
       status: 'pending',
     });
 
@@ -110,7 +110,7 @@ export const acceptContactRequest = async (req, res) => {
     }
 
     // Verificar que el usuario es el receptor
-    if (request.receiverId !== userId) {
+    if (request.receiver_id !== userId) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permiso para aceptar esta solicitud',
@@ -132,7 +132,7 @@ export const acceptContactRequest = async (req, res) => {
     // Emitir evento Socket.io para notificar al sender
     const io = req.app.get('io');
     if (io) {
-      io.to(`user:${request.senderId}`).emit('contact:request:accepted', {
+      io.to(`user:${request.sender_id}`).emit('contact:request:accepted', {
         request,
       });
     }
@@ -169,7 +169,7 @@ export const rejectContactRequest = async (req, res) => {
     }
 
     // Verificar que el usuario es el receptor
-    if (request.receiverId !== userId) {
+    if (request.receiver_id !== userId) {
       return res.status(403).json({
         success: false,
         message: 'No tienes permiso para rechazar esta solicitud',
@@ -191,7 +191,7 @@ export const rejectContactRequest = async (req, res) => {
     // Emitir evento Socket.io para notificar al sender (opcional)
     const io = req.app.get('io');
     if (io) {
-      io.to(`user:${request.senderId}`).emit('contact:request:rejected', {
+      io.to(`user:${request.sender_id}`).emit('contact:request:rejected', {
         requestId: request.id,
       });
     }
@@ -219,7 +219,7 @@ export const getPendingRequests = async (req, res) => {
 
     const requests = await ContactRequest.findAll({
       where: {
-        receiverId: userId,
+        receiver_id: userId,
         status: 'pending',
       },
       include: [
@@ -254,7 +254,7 @@ export const getSentRequests = async (req, res) => {
 
     const requests = await ContactRequest.findAll({
       where: {
-        senderId: userId,
+        sender_id: userId,
         status: 'pending',
       },
       include: [
@@ -291,8 +291,8 @@ export const getContacts = async (req, res) => {
     const requests = await ContactRequest.findAll({
       where: {
         [Op.or]: [
-          { senderId: userId },
-          { receiverId: userId },
+          { sender_id: userId },
+          { receiver_id: userId },
         ],
         status: 'accepted',
       },
@@ -312,7 +312,7 @@ export const getContacts = async (req, res) => {
 
     // Extraer los contactos (el otro usuario en cada solicitud)
     const contacts = requests.map((request) => {
-      if (request.senderId === userId) {
+      if (request.sender_id === userId) {
         return request.receiver;
       } else {
         return request.sender;
@@ -343,11 +343,11 @@ export const checkContactStatus = async (req, res) => {
     const request = await ContactRequest.findOne({
       where: {
         [Op.or]: [
-          { senderId: userId, receiverId: otherUserId },
-          { senderId: otherUserId, receiverId: userId },
+          { sender_id: userId, receiver_id: otherUserId },
+          { sender_id: otherUserId, receiver_id: userId },
         ],
       },
-      attributes: ['id', 'status', 'senderId', 'receiverId'],
+      attributes: ['id', 'status', 'sender_id', 'receiver_id'],
     });
 
     if (!request) {
@@ -367,7 +367,7 @@ export const checkContactStatus = async (req, res) => {
         isContact: request.status === 'accepted',
         status: request.status,
         requestId: request.id,
-        isSender: request.senderId === userId,
+        isSender: request.sender_id === userId,
         canSendRequest: request.status === 'rejected',
       },
     });
