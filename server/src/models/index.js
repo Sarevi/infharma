@@ -2,6 +2,7 @@ import User from './User.js';
 import Conversation from './Conversation.js';
 import ConversationParticipant from './ConversationParticipant.js';
 import Message from './Message.js';
+import ContactRequest from './ContactRequest.js';
 
 // User <-> Conversation (Many to Many through ConversationParticipant)
 User.belongsToMany(Conversation, {
@@ -83,4 +84,28 @@ Message.hasMany(Message, {
   as: 'replies',
 });
 
-export { User, Conversation, ConversationParticipant, Message };
+// ContactRequest -> User (sender)
+ContactRequest.belongsTo(User, {
+  foreignKey: 'senderId',
+  as: 'sender',
+});
+
+// ContactRequest -> User (receiver)
+ContactRequest.belongsTo(User, {
+  foreignKey: 'receiverId',
+  as: 'receiver',
+});
+
+// User -> ContactRequest (sent)
+User.hasMany(ContactRequest, {
+  foreignKey: 'senderId',
+  as: 'sentContactRequests',
+});
+
+// User -> ContactRequest (received)
+User.hasMany(ContactRequest, {
+  foreignKey: 'receiverId',
+  as: 'receivedContactRequests',
+});
+
+export { User, Conversation, ConversationParticipant, Message, ContactRequest };

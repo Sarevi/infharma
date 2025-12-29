@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import ChatLayout from './components/Chat/ChatLayout';
 import { useAuth } from './context/AuthContext';
+import { useChat } from './context/ChatContext';
 
 // --- MAPA DE ICONOS ---
 const ICON_MAP = {
@@ -527,6 +528,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
 // --- APP ---
 const App = () => {
   const { isAuthenticated, user, logout: authLogout } = useAuth();
+  const { totalUnreadCount, pendingRequests } = useChat();
   const [userRole, setUserRole] = useState(null); 
   const [view, setView] = useState('home'); 
   const [selectedDrug, setSelectedDrug] = useState(null);
@@ -670,10 +672,15 @@ const App = () => {
       {isAuthenticated && !showChat && (
         <button
           onClick={() => setShowChat(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center z-40 no-print"
+          className="fixed bottom-6 right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center z-40 no-print relative"
           title="Abrir Chat"
         >
           <MessageCircle className="w-6 h-6" />
+          {(totalUnreadCount > 0 || pendingRequests?.length > 0) && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-white">
+              {totalUnreadCount + (pendingRequests?.length || 0)}
+            </span>
+          )}
         </button>
       )}
 

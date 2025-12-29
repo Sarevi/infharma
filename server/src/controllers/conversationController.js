@@ -1,4 +1,4 @@
-import { Conversation, ConversationParticipant, User, Message } from '../models/index.js';
+import { Conversation, ConversationParticipant, User, Message, ContactRequest } from '../models/index.js';
 import { Op } from 'sequelize';
 import { getIO } from '../config/socket.js';
 
@@ -98,6 +98,26 @@ export const createConversation = async (req, res) => {
         success: false,
         message: 'At least one participant is required',
       });
+    }
+
+    // Validate that all participants are contacts of the creator
+    for (const participantId of participantIds) {
+      const contactRequest = await ContactRequest.findOne({
+        where: {
+          [Op.or]: [
+            { senderId: creatorId, receiverId: participantId },
+            { senderId: participantId, receiverId: creatorId },
+          ],
+          status: 'accepted',
+        },
+      });
+
+      if (!contactRequest) {
+        return res.status(403).json({
+          success: false,
+          message: 'Solo puedes crear conversaciones con tus contactos aceptados',
+        });
+      }
     }
 
     // For direct conversations, check if one already exists

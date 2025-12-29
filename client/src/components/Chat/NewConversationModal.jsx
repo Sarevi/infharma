@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
-import { X, Search, Users as UsersIcon, MessageCircle } from 'lucide-react';
+import { X, Search, Users as UsersIcon, MessageCircle, UserPlus, Clock, Check } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 
 const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
   const { user } = useAuth();
-  const { createConversation } = useChat();
+  const { createConversation, sendContactRequest } = useChat();
   const [users, setUsers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [conversationType, setConversationType] = useState('direct');
   const [groupName, setGroupName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -38,12 +39,42 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
   );
 
   const toggleUser = (userId) => {
+    const userObj = users.find(u => u.id === userId);
+
+    // Solo permitir seleccionar si es contacto aceptado
+    if (!userObj?.canChat) {
+      setError('Solo puedes chatear con tus contactos aceptados');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
     if (conversationType === 'direct') {
       setSelectedUsers([userId]);
     } else {
       setSelectedUsers((prev) =>
         prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
       );
+    }
+  };
+
+  const handleSendRequest = async (userId) => {
+    try {
+      const result = await sendContactRequest(userId);
+      if (result.success) {
+        // Actualizar el usuario en la lista
+        setUsers(prevUsers =>
+          prevUsers.map(u =>
+            u.id === userId
+              ? { ...u, contactStatus: 'pending', canSendRequest: false }
+              : u
+          )
+        );
+      } else {
+        setError(result.message || 'Error al enviar solicitud');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error sending request:', error);
     }
   };
 
@@ -160,18 +191,22 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
 
         {/* User list */}
         <div className="flex-1 overflow-y-auto p-4">
+          {error && (
+            <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
           {filteredUsers.length === 0 ? (
             <p className="text-center text-gray-500">No se encontraron usuarios</p>
           ) : (
             <div className="space-y-2">
               {filteredUsers.map((u) => (
-                <button
+                <div
                   key={u.id}
-                  onClick={() => toggleUser(u.id)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-colors ${
                     selectedUsers.includes(u.id)
-                      ? 'bg-blue-50 border-2 border-blue-500'
-                      : 'hover:bg-gray-50 border-2 border-transparent'
+                      ? 'bg-blue-50 border-blue-500'
+                      : 'border-transparent bg-gray-50'
                   }`}
                 >
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white font-semibold">
@@ -180,8 +215,42 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
                   <div className="flex-1 text-left">
                     <p className="font-medium text-gray-900">{u.name}</p>
                     <p className="text-sm text-gray-500">{u.email}</p>
+                    {u.hospital && (
+                      <p className="text-xs text-gray-400">{u.hospital}</p>
+                    )}
                   </div>
-                </button>
+                  <div className="flex items-center gap-2">
+                    {u.canChat ? (
+                      <button
+                        onClick={() => toggleUser(u.id)}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        Chatear
+                      </button>
+                    ) : u.contactStatus === 'pending' ? (
+                      u.isSender ? (
+                        <div className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pendiente
+                        </div>
+                      ) : (
+                        <div className="px-3 py-1.5 bg-amber-100 text-amber-700 text-sm rounded-lg flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Recibida
+                        </div>
+                      )
+                    ) : u.canSendRequest ? (
+                      <button
+                        onClick={() => handleSendRequest(u.id)}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        Agregar
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               ))}
             </div>
           )}

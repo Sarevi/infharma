@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { io } from 'socket.io-client';
 import { useAuth } from './AuthContext';
 import apiClient from '../api/client';
+import * as contactsAPI from '../api/contacts';
 
 const ChatContext = createContext(null);
 
@@ -14,6 +15,8 @@ export const ChatProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState(new Set());
   const [typingUsers, setTypingUsers] = useState({});
   const [isConnected, setIsConnected] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -113,12 +116,56 @@ export const ChatProvider = ({ children }) => {
       }));
     });
 
+    // Contact request events
+    socketInstance.on('contact:request:received', ({ request }) => {
+      setPendingRequests((prev) => [request, ...prev]);
+      // Notificación visual
+      if (Notification.permission === 'granted') {
+        new Notification('Nueva solicitud de contacto', {
+          body: `${request.sender.name} te ha enviado una solicitud de contacto`,
+          icon: request.sender.avatarUrl,
+        });
+      }
+    });
+
+    socketInstance.on('contact:request:accepted', ({ request }) => {
+      // Actualizar estado si es necesario
+      console.log('Contact request accepted:', request);
+    });
+
+    socketInstance.on('contact:request:rejected', ({ requestId }) => {
+      console.log('Contact request rejected:', requestId);
+    });
+
     setSocket(socketInstance);
 
     return () => {
       socketInstance.disconnect();
     };
   }, [isAuthenticated, user]);
+
+  // Calculate total unread count
+  useEffect(() => {
+    const total = conversations.reduce((acc, conv) => acc + (conv.unreadCount || 0), 0);
+    setTotalUnreadCount(total);
+  }, [conversations]);
+
+  // Fetch pending contact requests
+  const fetchPendingRequests = useCallback(async () => {
+    try {
+      const response = await contactsAPI.getPendingRequests();
+      setPendingRequests(response.data || []);
+    } catch (error) {
+      console.error('Error fetching pending requests:', error);
+    }
+  }, []);
+
+  // Load pending requests when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchPendingRequests();
+    }
+  }, [isAuthenticated, fetchPendingRequests]);
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
@@ -225,6 +272,48 @@ export const ChatProvider = ({ children }) => {
     [socket]
   );
 
+  // Contact request functions
+  const sendContactRequest = useCallback(async (receiverId) => {
+    try {
+      const response = await contactsAPI.sendContactRequest(receiverId);
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error sending contact request:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al enviar solicitud',
+      };
+    }
+  }, []);
+
+  const acceptContactRequest = useCallback(async (requestId) => {
+    try {
+      const response = await contactsAPI.acceptContactRequest(requestId);
+      setPendingRequests((prev) => prev.filter((req) => req.id !== requestId));
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error accepting contact request:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al aceptar solicitud',
+      };
+    }
+  }, []);
+
+  const rejectContactRequest = useCallback(async (requestId) => {
+    try {
+      const response = await contactsAPI.rejectContactRequest(requestId);
+      setPendingRequests((prev) => prev.filter((req) => req.id !== requestId));
+      return { success: true, data: response.data };
+    } catch (error) {
+      console.error('Error rejecting contact request:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al rechazar solicitud',
+      };
+    }
+  }, []);
+
   return (
     <ChatContext.Provider
       value={{
@@ -235,14 +324,20 @@ export const ChatProvider = ({ children }) => {
         onlineUsers,
         typingUsers,
         isConnected,
+        pendingRequests,
+        totalUnreadCount,
         fetchConversations,
         fetchMessages,
+        fetchPendingRequests,
         createConversation,
         sendMessage,
         joinConversation,
         leaveConversation,
         startTyping,
         stopTyping,
+        sendContactRequest,
+        acceptContactRequest,
+        rejectContactRequest,
       }}
     >
       {children}
