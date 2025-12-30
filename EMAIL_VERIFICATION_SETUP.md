@@ -20,7 +20,7 @@ El sistema de verificación de email ha sido completamente implementado en front
 - ✅ Botón de reenvío de email
 - ✅ Manejo de errores y tokens expirados
 
-## 📋 Pasos Pendientes para Activar el Sistema
+## 📋 Pasos para Activar el Sistema
 
 ### 1. Ejecutar Migración de Base de Datos
 
@@ -36,32 +36,55 @@ Esto agregará las columnas necesarias a la tabla `users`:
 
 Los usuarios existentes serán marcados como verificados automáticamente.
 
-### 2. Configurar Variables de Entorno
-
-Edita el archivo `/server/.env` y agrega:
-
-```env
-# Configuración de Email
-EMAIL_USER=tu-email@gmail.com
-EMAIL_PASSWORD=tu-app-password-de-gmail
-FRONTEND_URL=http://localhost:5173
-NODE_ENV=development
-```
-
-#### Cómo obtener App Password de Gmail:
-1. Ve a tu cuenta de Google: https://myaccount.google.com/
-2. Seguridad → Verificación en 2 pasos (debe estar activada)
-3. Busca "Contraseñas de aplicaciones"
-4. Genera una contraseña para "Correo"
-5. Copia la contraseña de 16 caracteres
-6. Úsala como `EMAIL_PASSWORD`
-
-### 3. Reiniciar el Servidor
+### 2. Iniciar el Servidor
 
 ```bash
 cd server
 npm run dev
 ```
+
+**¡Eso es todo!** El sistema funciona automáticamente en desarrollo usando **Ethereal**.
+
+## 📧 Cómo Funciona en Desarrollo
+
+### Modo Desarrollo (Predeterminado) - Ethereal
+
+**No necesitas configurar NADA**. El sistema usa Ethereal automáticamente:
+
+1. Cuando un usuario se registra, el servidor crea automáticamente una cuenta de prueba en Ethereal
+2. El email se "envía" a Ethereal (no es real, es solo para testing)
+3. **En la consola del servidor verás una URL** como:
+   ```
+   📧 EMAIL DE VERIFICACIÓN (Ethereal)
+   ═══════════════════════════════════════════════════════
+   👉 Abre este link para ver el email:
+   https://ethereal.email/message/XXXXXXX
+   ```
+4. Haz click en esa URL para ver el email HTML completo
+5. Copia el link de verificación del email y úsalo
+
+**Ventajas:**
+- ✅ Sin configuración
+- ✅ Emails HTML perfectos
+- ✅ No necesitas cuenta de email real
+- ✅ Puedes ver todos los emails enviados
+
+### Modo Producción - Gmail/SendGrid/Otro
+
+Para usar emails reales en producción, configura estas variables en `/server/.env`:
+
+```env
+NODE_ENV=production
+EMAIL_USER=tu-email@gmail.com
+EMAIL_PASSWORD=tu-app-password
+FRONTEND_URL=https://tu-dominio.com
+```
+
+#### Cómo obtener App Password de Gmail:
+1. Ir a: https://myaccount.google.com/apppasswords
+2. Si no aparece, necesitas activar la verificación en 2 pasos primero
+3. Genera una contraseña para "Correo"
+4. Úsala como `EMAIL_PASSWORD`
 
 ## 🔄 Flujo de Usuario
 
