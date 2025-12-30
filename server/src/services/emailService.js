@@ -3,43 +3,32 @@ import crypto from 'crypto';
 
 // Configuración del transportador de email
 // IMPORTANTE: Configurar variables de entorno en producción
-const createTransporter = () => {
-  // Para desarrollo, usar ethereal.email (emails de prueba)
-  // En producción, usar Gmail, SendGrid, AWS SES, etc.
-
-  if (process.env.NODE_ENV === 'production') {
-    // Producción: configurar con servicio real
+const createTransporter = async () => {
+  // En producción, usar servicio real (Gmail, SendGrid, AWS SES, etc.)
+  if (process.env.NODE_ENV === 'production' || process.env.EMAIL_USER) {
     return nodemailer.createTransporter({
-      service: 'gmail', // O 'SendGrid', 'SES', etc.
+      service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
       },
     });
-  } else {
-    // Desarrollo: usar Gmail con app password o cuenta de prueba
-    // OPCIÓN 1: Gmail (requiere "App Password" en configuración de Google)
-    return nodemailer.createTransporter({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER || 'tu-email@gmail.com',
-        pass: process.env.EMAIL_PASSWORD || 'tu-app-password',
-      },
-    });
-
-    // OPCIÓN 2: Usar Ethereal para testing (genera emails de prueba)
-    // Descomentar esto si no tienes Gmail configurado:
-    /*
-    return nodemailer.createTransporter({
-      host: 'smtp.ethereal.email',
-      port: 587,
-      auth: {
-        user: 'tu-usuario-ethereal',
-        pass: 'tu-password-ethereal',
-      },
-    });
-    */
   }
+
+  // En desarrollo SIN configuración: usar Ethereal automáticamente
+  // Ethereal crea cuentas de prueba temporales y muestra URLs de preview
+  console.log('📧 Usando Ethereal para emails de desarrollo...');
+  const testAccount = await nodemailer.createTestAccount();
+
+  return nodemailer.createTransporter({
+    host: 'smtp.ethereal.email',
+    port: 587,
+    secure: false,
+    auth: {
+      user: testAccount.user,
+      pass: testAccount.pass,
+    },
+  });
 };
 
 /**
@@ -53,7 +42,7 @@ export const generateVerificationToken = () => {
  * Enviar email de verificación
  */
 export const sendVerificationEmail = async (email, name, verificationToken) => {
-  const transporter = createTransporter();
+  const transporter = await createTransporter();
 
   const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${verificationToken}`;
 
@@ -126,8 +115,18 @@ El equipo de InFHarma
     console.log('✅ Email de verificación enviado:', info.messageId);
 
     // En desarrollo con Ethereal, muestra URL de preview
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('📧 Preview URL:', nodemailer.getTestMessageUrl(info));
+    const previewUrl = nodemailer.getTestMessageUrl(info);
+    if (previewUrl) {
+      console.log('');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('📧 EMAIL DE VERIFICACIÓN (Ethereal)');
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('Para:', email);
+      console.log('');
+      console.log('👉 Abre este link para ver el email:');
+      console.log(previewUrl);
+      console.log('═══════════════════════════════════════════════════════');
+      console.log('');
     }
 
     return { success: true, messageId: info.messageId };
@@ -141,7 +140,7 @@ El equipo de InFHarma
  * Enviar email de bienvenida (después de verificar)
  */
 export const sendWelcomeEmail = async (email, name) => {
-  const transporter = createTransporter();
+  const transporter = await createTransporter();
 
   const mailOptions = {
     from: `"InFHarma" <${process.env.EMAIL_USER || 'noreply@infharma.com'}>`,
