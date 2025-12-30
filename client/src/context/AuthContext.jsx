@@ -45,9 +45,12 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: userData };
     } catch (error) {
       console.error('Login error:', error);
+      const errorData = error.response?.data;
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al iniciar sesión',
+        message: errorData?.message || 'Error al iniciar sesión',
+        code: errorData?.code,
+        email: errorData?.email,
       };
     }
   };
@@ -61,8 +64,28 @@ export const AuthProvider = ({ children }) => {
         hospital,
         specialty,
       });
+
+      // Registro exitoso - NO auto-login, usuario debe verificar email primero
+      return {
+        success: true,
+        data: response.data.data,
+        message: response.data.message,
+      };
+    } catch (error) {
+      console.error('Register error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al registrarse',
+      };
+    }
+  };
+
+  const verifyEmail = async (token) => {
+    try {
+      const response = await apiClient.post('/auth/verify-email', { token });
       const { user: userData, accessToken, refreshToken } = response.data.data;
 
+      // Auto-login después de verificar
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -70,12 +93,33 @@ export const AuthProvider = ({ children }) => {
       setUser(userData);
       setIsAuthenticated(true);
 
-      return { success: true, user: userData };
+      return {
+        success: true,
+        message: response.data.message,
+        user: userData,
+      };
     } catch (error) {
-      console.error('Register error:', error);
+      console.error('Verify email error:', error);
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al registrarse',
+        message: error.response?.data?.message || 'Error al verificar email',
+        code: error.response?.data?.code,
+      };
+    }
+  };
+
+  const resendVerification = async (email) => {
+    try {
+      const response = await apiClient.post('/auth/resend-verification', { email });
+      return {
+        success: true,
+        message: response.data.message,
+      };
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al reenviar verificación',
       };
     }
   };
@@ -107,6 +151,8 @@ export const AuthProvider = ({ children }) => {
         isLoading,
         login,
         register,
+        verifyEmail,
+        resendVerification,
         logout,
         updateUser,
       }}

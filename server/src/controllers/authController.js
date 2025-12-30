@@ -1,5 +1,10 @@
 import { User } from '../models/index.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
+import {
+  generateVerificationToken,
+  sendVerificationEmail,
+  sendWelcomeEmail,
+} from '../services/emailService.js';
 
 // Register new user
 export const register = async (req, res) => {
@@ -11,11 +16,15 @@ export const register = async (req, res) => {
     if (existingUser) {
       return res.status(409).json({
         success: false,
-        message: 'User already exists with this email',
+        message: 'Ya existe un usuario con este email',
       });
     }
 
-    // Create user
+    // Generate verification token
+    const verificationToken = generateVerificationToken();
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+
+    // Create user (email not verified yet)
     const user = await User.create({
       email,
       password,
@@ -23,26 +32,33 @@ export const register = async (req, res) => {
       hospital,
       specialty,
       role: 'farmaceutico',
+      emailVerified: false,
+      verificationToken,
+      verificationTokenExpires,
     });
 
-    // Generate tokens
-    const accessToken = generateAccessToken(user);
-    const refreshToken = generateRefreshToken(user);
+    // Send verification email
+    const emailResult = await sendVerificationEmail(email, name, verificationToken);
+
+    if (!emailResult.success) {
+      console.error('Error sending verification email:', emailResult.error);
+      // Continuar aunque falle el email (el usuario puede solicitar reenvío)
+    }
 
     res.status(201).json({
       success: true,
-      message: 'User registered successfully',
+      message: 'Usuario registrado. Por favor verifica tu email.',
       data: {
-        user: user.getPublicProfile(),
-        accessToken,
-        refreshToken,
+        email: user.email,
+        name: user.name,
+        emailSent: emailResult.success,
       },
     });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({
       success: false,
-      message: 'Error registering user',
+      message: 'Error al registrar usuario',
       error: error.message,
     });
   }
@@ -58,7 +74,7 @@ export const login = async (req, res) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password',
+        message: 'Email o contraseña incorrectos',
       });
     }
 
@@ -67,7 +83,17 @@ export const login = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password',
+        message: 'Email o contraseña incorrectos',
+      });
+    }
+
+    // Check if email is verified
+    if (!user.emailVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Por favor verifica tu email antes de iniciar sesión',
+        code: 'EMAIL_NOT_VERIFIED',
+        email: user.email,
       });
     }
 
@@ -188,4 +214,151 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
-export default { register, login, refreshToken, logout, getCurrentUser };
+// Verify email with token
+export const verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Token de verificación requerido',
+      });
+    }
+
+    // Find user by verification token
+    const user = await User.findOne({
+      where: {
+        verificationToken: token,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Token de verificación inválido',
+      });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'El email ya ha sido verificado',
+      });
+    }
+
+    // Check if token expired
+    if (new Date() > user.verificationTokenExpires) {
+      return res.status(400).json({
+        success: false,
+        message: 'El token de verificación ha expirado',
+        code: 'TOKEN_EXPIRED',
+      });
+    }
+
+    // Verify email
+    await user.update({
+      emailVerified: true,
+      verificationToken: null,
+      verificationTokenExpires: null,
+    });
+
+    // Send welcome email
+    await sendWelcomeEmail(user.email, user.name);
+
+    // Generate tokens for auto-login
+    const accessToken = generateAccessToken(user);
+    const refreshToken = generateRefreshToken(user);
+
+    res.json({
+      success: true,
+      message: '¡Email verificado exitosamente! Bienvenido a InFHarma',
+      data: {
+        user: user.getPublicProfile(),
+        accessToken,
+        refreshToken,
+      },
+    });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al verificar email',
+      error: error.message,
+    });
+  }
+};
+
+// Resend verification email
+export const resendVerification = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email requerido',
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ where: { email } });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado',
+      });
+    }
+
+    // Check if already verified
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'El email ya ha sido verificado',
+      });
+    }
+
+    // Generate new verification token
+    const verificationToken = generateVerificationToken();
+    const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await user.update({
+      verificationToken,
+      verificationTokenExpires,
+    });
+
+    // Send verification email
+    const emailResult = await sendVerificationEmail(user.email, user.name, verificationToken);
+
+    if (!emailResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error al enviar email de verificación',
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Email de verificación reenviado',
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al reenviar verificación',
+      error: error.message,
+    });
+  }
+};
+
+export default {
+  register,
+  login,
+  refreshToken,
+  logout,
+  getCurrentUser,
+  verifyEmail,
+  resendVerification,
+};
