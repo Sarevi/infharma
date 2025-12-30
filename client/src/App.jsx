@@ -249,12 +249,13 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
   return (
     <div className="relative group/edit w-full">
       {isEditing && isFocused && (
-        <div className="flex items-center gap-1 bg-slate-900 text-white rounded shadow-lg absolute -top-9 left-0 z-[50] px-2 py-1 h-8 animate-in fade-in zoom-in-95 duration-100" onMouseDown={(e) => e.preventDefault()}>
-          <button onMouseDown={(e) => handleToolbarAction(e, 'bold')} className="hover:text-indigo-300 px-1"><Bold size={14}/></button>
-          <button onMouseDown={(e) => handleToolbarAction(e, 'italic')} className="hover:text-indigo-300 px-1"><Italic size={14}/></button>
-          <button onMouseDown={(e) => handleToolbarAction(e, 'underline')} className="hover:text-indigo-300 px-1"><Underline size={14}/></button>
-          <div className="w-px h-3 bg-slate-600 mx-1"></div>
-          {FONT_SIZES.map(s => (<button key={s.value} onMouseDown={(e) => handleToolbarAction(e, 'fontSize', s.value)} className="px-1 text-[10px] font-bold hover:text-indigo-300">{s.label}</button>))}
+        <div className="flex items-center gap-1 bg-slate-900 text-white rounded-lg shadow-2xl absolute -top-10 left-0 z-[150] px-3 py-2 animate-in fade-in zoom-in-95 duration-100 border border-slate-700" onMouseDown={(e) => e.preventDefault()}>
+          <button onMouseDown={(e) => handleToolbarAction(e, 'bold')} className="hover:bg-slate-700 rounded px-1.5 py-1 transition-colors" title="Negrita"><Bold size={14}/></button>
+          <button onMouseDown={(e) => handleToolbarAction(e, 'italic')} className="hover:bg-slate-700 rounded px-1.5 py-1 transition-colors" title="Cursiva"><Italic size={14}/></button>
+          <button onMouseDown={(e) => handleToolbarAction(e, 'underline')} className="hover:bg-slate-700 rounded px-1.5 py-1 transition-colors" title="Subrayado"><Underline size={14}/></button>
+          <div className="w-px h-4 bg-slate-600 mx-2"></div>
+          <span className="text-[9px] text-slate-400 uppercase mr-1">Tamaño</span>
+          {FONT_SIZES.map(s => (<button key={s.value} onMouseDown={(e) => handleToolbarAction(e, 'fontSize', s.value)} className="px-2 py-1 text-xs font-bold hover:bg-slate-700 rounded transition-colors" title={`Tamaño ${s.label}`}>{s.label}</button>))}
         </div>
       )}
 
@@ -421,28 +422,54 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
 };
 
 const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onResize, onResizeHeight, onDelete, onDragStart, onDrop, onDragEnter, onDragEnd, index, color, onColorChange, isDragging, isDragOver }) => {
+  const [isActive, setIsActive] = useState(false);
   const spanClasses = { 3: 'col-span-3', 4: 'col-span-4', 6: 'col-span-6', 8: 'col-span-8', 9: 'col-span-9', 12: 'col-span-12' };
   const heightClasses = { 1: 'h-auto', 2: 'min-h-[16rem]', 3: 'min-h-[24rem]', 4: 'min-h-[32rem]', 5: 'min-h-[40rem]' };
-  
+
   return (
-    <div 
-      className={`${spanClasses[colSpan]} relative group transition-all duration-200 ${isEditing ? 'cursor-grab' : ''} ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isDragOver ? 'border-l-4 border-indigo-500 pl-2' : ''}`}
+    <div
+      className={`${spanClasses[colSpan]} relative transition-all duration-200 ${isEditing ? 'cursor-pointer' : ''} ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isDragOver ? 'border-l-4 border-indigo-500 pl-2' : ''}`}
+      onClick={() => isEditing && setIsActive(!isActive)}
       draggable={isEditing} onDragStart={(e) => isEditing && onDragStart(e, index)} onDragEnter={(e) => isEditing && onDragEnter(e, index)} onDragEnd={onDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={(e) => isEditing && onDrop(e, index)}
     >
       {isEditing && (
-        <div className="absolute top-2 right-2 z-50 flex opacity-0 group-hover:opacity-100 transition-opacity bg-white/95 border rounded-lg p-1.5 items-center shadow-xl" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-             <div className="mr-1 text-slate-400 cursor-grab hover:text-indigo-600 rounded p-1"><GripVertical size={16}/></div>
-             <div className="w-px bg-slate-200 h-4 mx-1"></div>
-             <div className="flex gap-1 mr-1">{Object.keys(CARD_THEMES).map(k => <button key={k} onClick={() => onColorChange(k)} className={`w-3 h-3 rounded-full ${CARD_THEMES[k].accent} hover:scale-125 ${color === k ? 'ring-2 ring-slate-400' : 'opacity-50'}`}/>)}</div>
-             <div className="w-px bg-slate-200 h-4 mx-1"></div>
-             <div className="flex items-center gap-0.5"><MoveHorizontal size={12} className="text-slate-400"/><button onClick={() => onResize(-1)} className="p-1 hover:bg-slate-100" disabled={colSpan <= 3}><Minus size={12}/></button><span className="text-[9px] font-mono font-bold w-4 text-center">{colSpan}</span><button onClick={() => onResize(1)} className="p-1 hover:bg-slate-100" disabled={colSpan >= 12}><Plus size={12}/></button></div>
-             <div className="w-px bg-slate-200 h-4 mx-1"></div>
-             <div className="flex items-center gap-0.5"><MoveVertical size={12} className="text-slate-400"/><button onClick={() => onResizeHeight(-1)} className="p-1 hover:bg-slate-100" disabled={heightLevel <= 1}><Minus size={12}/></button><span className="text-[9px] font-mono font-bold w-3 text-center">{heightLevel}</span><button onClick={() => onResizeHeight(1)} className="p-1 hover:bg-slate-100" disabled={heightLevel >= 5}><Plus size={12}/></button></div>
-             <div className="w-px bg-slate-200 h-4 mx-1"></div>
-             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1 hover:bg-rose-50 text-rose-400 hover:text-rose-600"><Trash2 size={14}/></button>
+        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 flex bg-white border rounded-lg p-2 items-center shadow-xl transition-all ${isActive ? 'opacity-100 z-[100]' : 'opacity-40 z-10'}`} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+             <div className="mr-2 text-slate-400 cursor-grab hover:text-indigo-600 rounded p-1" title="Arrastrar"><GripVertical size={16}/></div>
+             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+
+             <div className="flex flex-col mr-2">
+               <span className="text-[8px] text-slate-400 uppercase mb-1">Color</span>
+               <div className="flex gap-1">{Object.keys(CARD_THEMES).map(k => <button key={k} onClick={() => onColorChange(k)} className={`w-4 h-4 rounded ${CARD_THEMES[k].accent} hover:scale-125 transition-transform ${color === k ? 'ring-2 ring-indigo-600' : 'opacity-60'}`} title={CARD_THEMES[k].name}/>)}</div>
+             </div>
+
+             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+
+             <div className="flex flex-col mr-2">
+               <span className="text-[8px] text-slate-400 uppercase mb-1">Ancho</span>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => onResize(-1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={colSpan <= 3}><Minus size={12}/></button>
+                 <span className="text-xs font-mono font-bold w-6 text-center">{colSpan}</span>
+                 <button onClick={() => onResize(1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={colSpan >= 12}><Plus size={12}/></button>
+               </div>
+             </div>
+
+             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+
+             <div className="flex flex-col mr-2">
+               <span className="text-[8px] text-slate-400 uppercase mb-1">Alto</span>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => onResizeHeight(-1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={heightLevel <= 1}><Minus size={12}/></button>
+                 <span className="text-xs font-mono font-bold w-4 text-center">{heightLevel}</span>
+                 <button onClick={() => onResizeHeight(1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={heightLevel >= 5}><Plus size={12}/></button>
+               </div>
+             </div>
+
+             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+
+             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 hover:bg-rose-50 text-rose-400 hover:text-rose-600 rounded" title="Eliminar tarjeta"><Trash2 size={16}/></button>
         </div>
       )}
-      <div className={`h-full flex flex-col transition-all ${heightClasses[heightLevel]} ${isEditing ? 'border border-dashed border-slate-300 rounded-xl hover:border-indigo-400' : ''}`}>
+      <div className={`h-full flex flex-col transition-all ${heightClasses[heightLevel]} ${isEditing ? `border-2 ${isActive ? 'border-indigo-500 shadow-lg' : 'border-dashed border-slate-300'} rounded-xl` : ''}`}>
         {children}
       </div>
     </div>
@@ -670,7 +697,7 @@ const App = () => {
       {isAuthenticated && !showChat && (
         <button
           onClick={() => setShowChat(true)}
-          className="fixed bottom-8 left-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
+          className="fixed bottom-28 left-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
           style={{ zIndex: 9999 }}
           title="Abrir Chat"
         >
