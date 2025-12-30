@@ -9,12 +9,13 @@ const createTransporter = async () => {
   // Importar nodemailer la primera vez que se llame
   if (!nodemailerModule) {
     const imported = await import('nodemailer');
+    // nodemailer exporta createTransport (sin 'er') directamente
     nodemailerModule = imported.default || imported;
   }
 
   // En producción, usar servicio real (Gmail, SendGrid, AWS SES, etc.)
   if (process.env.NODE_ENV === 'production' || process.env.EMAIL_USER) {
-    return nodemailerModule.createTransporter({
+    return nodemailerModule.createTransport({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
@@ -28,7 +29,7 @@ const createTransporter = async () => {
   console.log('📧 Usando Ethereal para emails de desarrollo...');
   const testAccount = await nodemailerModule.createTestAccount();
 
-  return nodemailerModule.createTransporter({
+  return nodemailerModule.createTransport({
     host: 'smtp.ethereal.email',
     port: 587,
     secure: false,
