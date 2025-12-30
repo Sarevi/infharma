@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import html2pdf from 'html2pdf.js';
 import {
   // Iconos Generales de UI
   Search, ChevronRight, ChevronDown, X, Plus, Minus, Trash2, Save,
   Edit3, LogOut, Settings, ExternalLink, XCircle, GripVertical,
   Menu, MoreHorizontal, Check, AlertCircle, HelpCircle,
-  ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle,
+  ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle, Download,
 
   // Herramientas
   Printer, Calculator, CalendarCheck, Phone,
@@ -414,30 +415,61 @@ const SettingsModal = ({ isOpen, onClose, settings, onSave }) => {
 };
 
 const LoginPage = () => {
-  const { login } = useAuth();
+  const { login, register } = useAuth();
+  const [mode, setMode] = useState('login'); // 'login' or 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [hospital, setHospital] = useState('');
+  const [specialty, setSpecialty] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleAuth = async () => {
-    if (!email || !password) {
-      setError('Por favor ingresa email y contraseña');
-      setTimeout(() => setError(''), 3000);
-      return;
+    if (mode === 'login') {
+      // Login
+      if (!email || !password) {
+        setError('Por favor ingresa email y contraseña');
+        setTimeout(() => setError(''), 3000);
+        return;
+      }
+
+      setIsLoading(true);
+      setError('');
+
+      const result = await login(email, password);
+
+      if (!result.success) {
+        setError(result.message || 'Error al iniciar sesión');
+        setTimeout(() => setError(''), 3000);
+      }
+
+      setIsLoading(false);
+    } else {
+      // Register
+      if (!email || !password || !name || !hospital || !specialty) {
+        setError('Por favor completa todos los campos');
+        setTimeout(() => setError(''), 3000);
+        return;
+      }
+
+      setIsLoading(true);
+      setError('');
+      setSuccess('');
+
+      const result = await register(email, password, name, hospital, specialty);
+
+      if (result.success) {
+        setSuccess('¡Registro exitoso! Bienvenido a InFHarma');
+        // Auto-login después del registro exitoso
+      } else {
+        setError(result.message || 'Error al registrarse');
+        setTimeout(() => setError(''), 3000);
+      }
+
+      setIsLoading(false);
     }
-
-    setIsLoading(true);
-    setError('');
-
-    const result = await login(email, password);
-
-    if (!result.success) {
-      setError(result.message || 'Error al iniciar sesión');
-      setTimeout(() => setError(''), 3000);
-    }
-
-    setIsLoading(false);
   };
 
   const handleKeyPress = (e) => {
@@ -454,7 +486,25 @@ const LoginPage = () => {
       </div>
       <div className="md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
         <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-xl">
-          <h2 className="text-3xl font-bold text-center">Iniciar Sesión</h2>
+          {/* Pestañas Login/Registro */}
+          <div className="flex border-b mb-6">
+            <button
+              onClick={() => setMode('login')}
+              className={`flex-1 pb-3 font-bold transition-colors ${mode === 'login' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}
+            >
+              Iniciar Sesión
+            </button>
+            <button
+              onClick={() => setMode('register')}
+              className={`flex-1 pb-3 font-bold transition-colors ${mode === 'register' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}
+            >
+              Registrarse
+            </button>
+          </div>
+
+          <h2 className="text-3xl font-bold text-center">{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
+
+          {/* Campos comunes */}
           <input
             type="email"
             value={email}
@@ -473,19 +523,58 @@ const LoginPage = () => {
             placeholder="Contraseña"
             disabled={isLoading}
           />
+
+          {/* Campos adicionales para registro */}
+          {mode === 'register' && (
+            <>
+              <input
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full p-3 border rounded-lg"
+                placeholder="Nombre completo"
+                disabled={isLoading}
+              />
+              <input
+                type="text"
+                value={hospital}
+                onChange={e => setHospital(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full p-3 border rounded-lg"
+                placeholder="Hospital"
+                disabled={isLoading}
+              />
+              <input
+                type="text"
+                value={specialty}
+                onChange={e => setSpecialty(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full p-3 border rounded-lg"
+                placeholder="Especialidad"
+                disabled={isLoading}
+              />
+            </>
+          )}
+
           {error && <div className="text-rose-500 text-center text-sm">{error}</div>}
+          {success && <div className="text-emerald-500 text-center text-sm font-medium">{success}</div>}
+
           <button
             onClick={handleAuth}
             disabled={isLoading}
             className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Iniciando sesión...' : 'Acceder'}
+            {isLoading ? (mode === 'login' ? 'Iniciando sesión...' : 'Registrando...') : (mode === 'login' ? 'Acceder' : 'Crear Cuenta')}
           </button>
-          <div className="text-center text-xs text-slate-400 mt-4">
-            <p>Usuarios de prueba:</p>
-            <p className="mt-2">admin@infharma.com / admin123</p>
-            <p>maria.garcia@hospital.com / maria123</p>
-          </div>
+
+          {mode === 'login' && (
+            <div className="text-center text-xs text-slate-400 mt-4">
+              <p>Usuarios de prueba:</p>
+              <p className="mt-2">admin@infharma.com / admin123</p>
+              <p>maria.garcia@hospital.com / maria123</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -643,7 +732,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   return (
     <div className="bg-slate-100 p-8 flex justify-center overflow-y-auto h-full" onClick={()=>setIconPicker({isOpen:false, targetIndex:null})}>
        <ConfirmModal isOpen={confirmModal.isOpen} onClose={()=>setConfirmModal({...confirmModal,isOpen:false})} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message}/>
-       <div className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0">
+       <div id="pdf-content" className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0">
           <div className="flex justify-between items-start border-b-4 border-indigo-600 pb-4 mb-6"><div className="flex gap-4 items-center"><div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 text-indigo-600">{settings.logoUrl?<img src={settings.logoUrl} className="w-full h-full object-contain p-2"/>:<Stethoscope size={32}/>}</div><div><h1 className="text-2xl font-black text-slate-900 tracking-tight">{drug.name}</h1><p className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">Guía de Inicio</p></div></div><div className="text-right"><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{settings.hospitalName}</div></div></div>
           <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)}>{renderCardContent(item, index)}</ResizableCard>))}</div>
           {isEditing && <div className="mb-6 flex justify-center"><button onClick={()=>updatePat('layout',[...layout,{id:`custom_${Date.now()}`,type:'custom',colSpan:4,heightLevel:1,color:'indigo', iconName:'Consejo'}])} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs"><Plus size={16} className="mr-2"/> AÑADIR TARJETA</button></div>}
@@ -729,6 +818,21 @@ const App = () => {
   const getOutdatedDrugs = () => { const parseDate = (str) => { if(!str) return new Date(0); const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); }; return [...data].sort((a,b) => parseDate(a.updatedAt) - parseDate(b.updatedAt)).slice(0, 2); };
   const outdatedDrugs = getOutdatedDrugs();
   const handleOpenLink = (url) => window.open(url, '_blank', 'noopener,noreferrer');
+
+  const handleExportToPDF = () => {
+    const element = document.getElementById('pdf-content');
+    const fileName = `${selectedDrug.name.replace(/\s+/g, '_')}_${activeTab === 'pro' ? 'Protocolo' : 'Paciente'}.pdf`;
+
+    const opt = {
+      margin: [10, 10, 10, 10],
+      filename: fileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    html2pdf().set(opt).from(element).save();
+  };
 
   const renderProContent = (section) => {
       const updateItems = (newItems) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,items:newItems}:s)});
@@ -835,29 +939,38 @@ const App = () => {
                            <button onClick={()=>setActiveTab('pro')} className={`pb-4 px-6 font-bold border-b-2 ${activeTab==='pro'?'border-indigo-600 text-indigo-600':'border-transparent text-slate-400'}`}>Protocolo</button>
                            <button onClick={()=>setActiveTab('patient')} className={`pb-4 px-6 font-bold border-b-2 ${activeTab==='patient'?'border-emerald-500 text-emerald-600':'border-transparent text-slate-400'}`}>Paciente</button>
                         </div>
-                        {/* Botón Editar */}
-                        {user?.role==='admin' && (
-                          <div className="flex gap-2 mb-2">
-                            {isEditing ? (
-                              <>
-                                <button onClick={handleCancelEdit} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 font-medium">
-                                  Cancelar
+                        {/* Botones de acción */}
+                        <div className="flex gap-2 mb-2">
+                          <button
+                            onClick={handleExportToPDF}
+                            className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm hover:bg-emerald-700 flex items-center font-medium"
+                            title="Exportar a PDF"
+                          >
+                            <Download size={14} className="mr-2"/> PDF
+                          </button>
+                          {user?.role==='admin' && (
+                            <>
+                              {isEditing ? (
+                                <>
+                                  <button onClick={handleCancelEdit} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 font-medium">
+                                    Cancelar
+                                  </button>
+                                  <button onClick={()=>handleSaveDrug(selectedDrug)} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center font-bold">
+                                    <Save size={14} className="mr-2"/> Guardar
+                                  </button>
+                                </>
+                              ) : (
+                                <button onClick={()=>setIsEditing(true)} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 flex items-center font-medium">
+                                  <Edit3 size={14} className="mr-2"/> Editar
                                 </button>
-                                <button onClick={()=>handleSaveDrug(selectedDrug)} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center font-bold">
-                                  <Save size={14} className="mr-2"/> Guardar
-                                </button>
-                              </>
-                            ) : (
-                              <button onClick={()=>setIsEditing(true)} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 flex items-center font-medium">
-                                <Edit3 size={14} className="mr-2"/> Editar
-                              </button>
-                            )}
-                          </div>
-                        )}
+                              )}
+                            </>
+                          )}
+                        </div>
                     </div>
 
                     {activeTab === 'pro' ? (
-                       <div className="bg-white shadow-lg mx-auto p-12 min-h-[297mm] max-w-[210mm]">
+                       <div id="pdf-content" className="bg-white shadow-lg mx-auto p-12 min-h-[297mm] max-w-[210mm]">
                           <div className="flex justify-between items-end border-b pb-6 mb-8"><div><h2 className="text-2xl font-black uppercase">Protocolo Clínico</h2><div className="flex items-center gap-2 text-sm text-slate-500 mt-1"><Activity size={16} className="text-indigo-500"/> Farmacia Hospitalaria</div></div><div className="text-right"><p className="text-xs font-bold text-slate-400 uppercase">Revisión</p><p className="font-mono text-sm">{selectedDrug.updatedAt}</p></div></div>
                           <div>{selectedDrug.proSections.map(section => (<ProSection key={section.id} section={section} isEditing={isEditing} updateContent={(f,v)=>setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,[f]:v}:s)})} onRemove={()=>{if(window.confirm("Borrar sección?")) setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.filter(s=>s.id!==section.id)})}}>{renderProContent(section)}</ProSection>))}</div>
                           {isEditing && (<div className="mt-12 pt-6 border-t border-dashed text-center flex gap-3 justify-center no-print"><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Nueva Sección', type: 'text', content: 'Escriba aquí el contenido del protocolo...' }]})} className="px-6 py-3 bg-indigo-50 text-indigo-700 rounded-full font-bold text-sm hover:bg-indigo-100 flex items-center"><Plus size={16} className="mr-2"/> Texto Libre</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Ajuste Renal/Hepático', type: 'adjustments', items: [{label: 'Criterio', action: 'Acción'}] }]})} className="px-6 py-3 bg-amber-100 text-amber-700 rounded-full font-bold text-sm hover:bg-amber-200 flex items-center border border-amber-300"><AlertTriangle size={16} className="mr-2"/> Ajustes Dosis</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Gráfica Posología', type: 'timeline', data: [{ week: 'S0', dose: 100, label: 'Inicio', subtext: '', color: 'indigo', height: 100 }] }]})} className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-full font-bold text-sm hover:bg-emerald-100 flex items-center"><BarChart3 size={16} className="mr-2"/> Gráfica</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Checklist', type: 'checklist', items: ['Requisito 1'] }]})} className="px-6 py-3 bg-sky-50 text-sky-700 rounded-full font-bold text-sm hover:bg-sky-100 flex items-center"><CheckCircle size={16} className="mr-2"/> Checklist</button></div>)}
