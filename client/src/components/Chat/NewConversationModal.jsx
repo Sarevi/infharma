@@ -32,11 +32,13 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
     }
   };
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = searchTerm.trim()
+    ? users.filter(
+        (u) =>
+          u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          u.email.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   const toggleUser = (userId) => {
     const userObj = users.find(u => u.id === userId);
@@ -197,7 +199,9 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
             </div>
           )}
           {filteredUsers.length === 0 ? (
-            <p className="text-center text-gray-500">No se encontraron usuarios</p>
+            <p className="text-center text-gray-500">
+              {searchTerm.trim() ? 'No se encontraron usuarios' : 'Escribe para buscar usuarios...'}
+            </p>
           ) : (
             <div className="space-y-2">
               {filteredUsers.map((u) => (
