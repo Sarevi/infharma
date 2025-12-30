@@ -512,7 +512,7 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
   return (
     <div className="mb-16 pl-2 relative group break-inside-avoid">
       {isEditing && <button onClick={onRemove} className="absolute -left-8 top-0 p-1.5 text-slate-300 hover:text-rose-500"><Trash2 size={14} /></button>}
-      <div className="flex items-center mb-6 border-b border-slate-100 pb-3">
+      <div className="flex items-center mb-3 border-b border-slate-100 pb-2">
          {isEditing ? (
           <div className="flex items-center w-full"><FileText size={24} className="text-slate-400 mr-2"/><EditableText value={section.title} onChange={(v) => updateContent('title', v)} className="text-2xl font-bold text-slate-800 bg-transparent outline-none w-full"/></div>
         ) : <h3 className="text-2xl font-bold text-slate-800 flex items-center tracking-tight" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
@@ -773,6 +773,23 @@ const App = () => {
             <div className="h-16 flex items-center px-6 border-b cursor-pointer" onClick={()=>setView('home')}><div className="w-8 h-8 bg-indigo-600 rounded mr-3 flex items-center justify-center text-white"><Stethoscope size={18}/></div><span className="font-bold">InFHarma</span></div>
             <div className="p-4 flex-1 overflow-y-auto">
                <div className="relative mb-4"><Search className="absolute left-3 top-2.5 text-slate-400" size={16}/><input type="text" placeholder="Buscar..." className="w-full pl-9 py-2 bg-slate-50 border rounded-lg text-sm" value={searchTerm} onChange={e=>setSearchTerm(e.target.value)}/>{searchTerm && <button onClick={()=>setSearchTerm('')} className="absolute right-2 top-2.5 text-slate-400"><XCircle size={16}/></button>}</div>
+
+               {/* Barra de Chat */}
+               <button
+                 onClick={() => setShowChat(true)}
+                 className="w-full mb-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2.5 px-3 flex items-center justify-between transition-colors relative"
+               >
+                 <div className="flex items-center gap-2">
+                   <MessageCircle size={16}/>
+                   <span className="font-medium text-sm">Mensajes</span>
+                 </div>
+                 {(totalUnreadCount > 0 || pendingRequests?.length > 0) && (
+                   <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center">
+                     {totalUnreadCount + (pendingRequests?.length || 0)}
+                   </span>
+                 )}
+               </button>
+
                {Array.from(new Set([...data.map(d=>d.system).filter(Boolean),...customAreas])).sort().map(sys => {
                   const drugs = data.filter(d => (d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.dci.toLowerCase().includes(searchTerm.toLowerCase())) && d.system === sys);
                   if(drugs.length === 0 && !customAreas.includes(sys) && searchTerm) return null;
@@ -790,7 +807,7 @@ const App = () => {
           <main className="flex-1 flex flex-col overflow-hidden relative bg-white">
             <header className="h-16 flex items-center justify-between px-8 border-b bg-white/80 backdrop-blur no-print">
                <div className="text-sm text-slate-500">{view==='detail' && <button onClick={()=>setView('home')} className="hover:text-slate-900 flex items-center"><ArrowLeft size={14} className="mr-1"/> Volver</button>}</div>
-               <div className="flex gap-2">{view==='detail' && user?.role==='admin' && <>{isEditing ? <><button onClick={handleCancelEdit} className="px-3 py-1.5 border rounded text-sm hover:bg-slate-50">Cancelar</button><button onClick={()=>handleSaveDrug(selectedDrug)} className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center"><Save size={14} className="mr-2"/> Guardar</button></> : <button onClick={()=>setIsEditing(true)} className="px-3 py-1.5 border rounded text-sm hover:bg-slate-50 flex items-center"><Edit3 size={14} className="mr-2"/> Editar</button>}</>}</div>
+               <div className="flex gap-2"></div>
             </header>
             <div className="flex-1 overflow-y-auto bg-slate-50">
                {view === 'home' ? (
@@ -812,16 +829,31 @@ const App = () => {
                  <div className="max-w-5xl mx-auto p-8 pb-20">
                     <div className="mb-8">{isEditing ? (<div className="flex flex-col gap-4"><EditableText className="text-4xl font-bold border-b border-indigo-200 outline-none" value={selectedDrug.name} onChange={v=>setSelectedDrug({...selectedDrug, name: v})} isEditing={true} placeholder="Nombre Comercial"/><div className="flex gap-4"><EditableText className="border p-2 rounded w-full" value={selectedDrug.dci} onChange={v=>setSelectedDrug({...selectedDrug,dci:v})} isEditing={true} placeholder="DCI"/><EditableText className="border p-2 rounded w-full" value={selectedDrug.presentation} onChange={v=>setSelectedDrug({...selectedDrug,presentation:v})} isEditing={true} placeholder="Presentación"/></div></div>) : (<div><div className="flex gap-2 mb-2"><Badge className="bg-indigo-100 text-indigo-800">{selectedDrug.system}</Badge><Badge className="bg-slate-100 text-slate-600">{selectedDrug.type}</Badge></div><h1 className="text-5xl font-bold text-slate-900 mb-2">{selectedDrug.name}</h1><p className="text-xl text-slate-500 font-light">{selectedDrug.dci} | {selectedDrug.presentation}</p></div>)}</div>
                     
-                    {/* --- NUEVA UBICACIÓN DE LA CALCULADORA Y PESTAÑAS --- */}
+                    {/* --- PESTAÑAS Y BOTÓN EDITAR --- */}
                     <div className="flex justify-between items-center mb-10 border-b no-print">
                         <div className="flex">
                            <button onClick={()=>setActiveTab('pro')} className={`pb-4 px-6 font-bold border-b-2 ${activeTab==='pro'?'border-indigo-600 text-indigo-600':'border-transparent text-slate-400'}`}>Protocolo</button>
                            <button onClick={()=>setActiveTab('patient')} className={`pb-4 px-6 font-bold border-b-2 ${activeTab==='patient'?'border-emerald-500 text-emerald-600':'border-transparent text-slate-400'}`}>Paciente</button>
                         </div>
-                        {/* Botón Calculadora Integrado */}
-                        <button onClick={()=>setShowCalculator(true)} className="flex items-center gap-2 bg-indigo-50 text-indigo-600 px-3 py-2 rounded-lg text-xs font-bold hover:bg-indigo-100 mb-2 transition-colors">
-                           <Calculator size={14}/> Calculadoras
-                        </button>
+                        {/* Botón Editar */}
+                        {user?.role==='admin' && (
+                          <div className="flex gap-2 mb-2">
+                            {isEditing ? (
+                              <>
+                                <button onClick={handleCancelEdit} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 font-medium">
+                                  Cancelar
+                                </button>
+                                <button onClick={()=>handleSaveDrug(selectedDrug)} className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 flex items-center font-bold">
+                                  <Save size={14} className="mr-2"/> Guardar
+                                </button>
+                              </>
+                            ) : (
+                              <button onClick={()=>setIsEditing(true)} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 flex items-center font-medium">
+                                <Edit3 size={14} className="mr-2"/> Editar
+                              </button>
+                            )}
+                          </div>
+                        )}
                     </div>
 
                     {activeTab === 'pro' ? (
@@ -836,23 +868,6 @@ const App = () => {
             </div>
           </main>
         </div>
-      )}
-
-      {/* Botón flotante del chat - solo visible cuando está autenticado */}
-      {isAuthenticated && !showChat && (
-        <button
-          onClick={() => setShowChat(true)}
-          className="fixed bottom-36 left-4 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
-          style={{ zIndex: 9999 }}
-          title="Abrir Chat"
-        >
-          <MessageCircle className="w-7 h-7" />
-          {(totalUnreadCount > 0 || pendingRequests?.length > 0) && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[24px] h-6 px-1.5 flex items-center justify-center border-2 border-white shadow-lg animate-pulse">
-              {totalUnreadCount + (pendingRequests?.length || 0)}
-            </span>
-          )}
-        </button>
       )}
 
       {/* Chat Layout */}
