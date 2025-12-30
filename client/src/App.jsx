@@ -6,6 +6,7 @@ import {
   Edit3, LogOut, Settings, ExternalLink, XCircle, GripVertical,
   Menu, MoreHorizontal, Check, AlertCircle, HelpCircle,
   ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle, Download,
+  Mail, Loader,
 
   // Herramientas
   Printer, Calculator, CalendarCheck, Phone,
@@ -415,8 +416,8 @@ const SettingsModal = ({ isOpen, onClose, settings, onSave }) => {
 };
 
 const LoginPage = () => {
-  const { login, register } = useAuth();
-  const [mode, setMode] = useState('login'); // 'login' or 'register'
+  const { login, register, verifyEmail, resendVerification } = useAuth();
+  const [mode, setMode] = useState('login'); // 'login', 'register', 'email-sent', 'verifying', 'verified'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -425,6 +426,61 @@ const LoginPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [unverifiedEmail, setUnverifiedEmail] = useState('');
+
+  // Check for verification token in URL on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+
+    if (token) {
+      handleVerifyEmail(token);
+    }
+  }, []);
+
+  const handleVerifyEmail = async (token) => {
+    setMode('verifying');
+    setIsLoading(true);
+    setError('');
+
+    const result = await verifyEmail(token);
+
+    if (result.success) {
+      setMode('verified');
+      setSuccess(result.message || '¡Email verificado! Redirigiendo...');
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Auto-login is handled by verifyEmail in AuthContext
+    } else {
+      setMode('login');
+      setError(result.message || 'Error al verificar email');
+      if (result.code === 'TOKEN_EXPIRED') {
+        // Show resend option
+        setUnverifiedEmail(email);
+      }
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleResendEmail = async () => {
+    if (!unverifiedEmail) return;
+
+    setIsLoading(true);
+    setError('');
+    setSuccess('');
+
+    const result = await resendVerification(unverifiedEmail);
+
+    if (result.success) {
+      setSuccess('Email de verificación reenviado. Revisa tu bandeja de entrada.');
+      setMode('email-sent');
+    } else {
+      setError(result.message || 'Error al reenviar email');
+    }
+
+    setIsLoading(false);
+  };
 
   const handleAuth = async () => {
     if (mode === 'login') {
@@ -441,8 +497,13 @@ const LoginPage = () => {
       const result = await login(email, password);
 
       if (!result.success) {
-        setError(result.message || 'Error al iniciar sesión');
-        setTimeout(() => setError(''), 3000);
+        if (result.code === 'EMAIL_NOT_VERIFIED') {
+          setUnverifiedEmail(result.email || email);
+          setError(result.message || 'Por favor verifica tu email antes de iniciar sesión');
+        } else {
+          setError(result.message || 'Error al iniciar sesión');
+        }
+        setTimeout(() => setError(''), 5000);
       }
 
       setIsLoading(false);
@@ -461,8 +522,8 @@ const LoginPage = () => {
       const result = await register(email, password, name, hospital, specialty);
 
       if (result.success) {
-        setSuccess('¡Registro exitoso! Bienvenido a InFHarma');
-        // Auto-login después del registro exitoso
+        setMode('email-sent');
+        setSuccess(result.message || '¡Registro exitoso! Revisa tu email para verificar tu cuenta.');
       } else {
         setError(result.message || 'Error al registrarse');
         setTimeout(() => setError(''), 3000);
@@ -486,94 +547,167 @@ const LoginPage = () => {
       </div>
       <div className="md:w-1/2 flex items-center justify-center p-8 bg-slate-50">
         <div className="max-w-md w-full space-y-6 bg-white p-8 rounded-2xl shadow-xl">
-          {/* Pestañas Login/Registro */}
-          <div className="flex border-b mb-6">
-            <button
-              onClick={() => setMode('login')}
-              className={`flex-1 pb-3 font-bold transition-colors ${mode === 'login' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}
-            >
-              Iniciar Sesión
-            </button>
-            <button
-              onClick={() => setMode('register')}
-              className={`flex-1 pb-3 font-bold transition-colors ${mode === 'register' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}
-            >
-              Registrarse
-            </button>
-          </div>
-
-          <h2 className="text-3xl font-bold text-center">{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
-
-          {/* Campos comunes */}
-          <input
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="w-full p-3 border rounded-lg"
-            placeholder="Email"
-            disabled={isLoading}
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="w-full p-3 border rounded-lg"
-            placeholder="Contraseña"
-            disabled={isLoading}
-          />
-
-          {/* Campos adicionales para registro */}
-          {mode === 'register' && (
-            <>
-              <input
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full p-3 border rounded-lg"
-                placeholder="Nombre completo"
+          {/* Pantalla de Email Enviado */}
+          {mode === 'email-sent' && (
+            <div className="text-center py-8">
+              <div className="mx-auto w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mb-4">
+                <Mail className="text-indigo-600" size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-3">¡Revisa tu correo!</h2>
+              <p className="text-slate-600 mb-6">
+                Te hemos enviado un email de verificación a <strong>{email}</strong>.
+                Por favor, haz click en el enlace del correo para activar tu cuenta.
+              </p>
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+                <p className="text-sm text-slate-600">
+                  <strong>¿No recibiste el email?</strong>
+                  <br />
+                  Revisa tu carpeta de spam o solicita un nuevo email de verificación.
+                </p>
+              </div>
+              <button
+                onClick={handleResendEmail}
                 disabled={isLoading}
-              />
-              <input
-                type="text"
-                value={hospital}
-                onChange={e => setHospital(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full p-3 border rounded-lg"
-                placeholder="Hospital"
-                disabled={isLoading}
-              />
-              <input
-                type="text"
-                value={specialty}
-                onChange={e => setSpecialty(e.target.value)}
-                onKeyPress={handleKeyPress}
-                className="w-full p-3 border rounded-lg"
-                placeholder="Especialidad"
-                disabled={isLoading}
-              />
-            </>
+                className="w-full py-3 bg-slate-600 text-white rounded-lg font-bold hover:bg-slate-700 disabled:bg-gray-400 mb-3"
+              >
+                {isLoading ? 'Reenviando...' : 'Reenviar email de verificación'}
+              </button>
+              <button
+                onClick={() => setMode('login')}
+                className="w-full py-3 bg-white border-2 border-slate-300 text-slate-700 rounded-lg font-bold hover:bg-slate-50"
+              >
+                Volver al inicio de sesión
+              </button>
+            </div>
           )}
 
-          {error && <div className="text-rose-500 text-center text-sm">{error}</div>}
-          {success && <div className="text-emerald-500 text-center text-sm font-medium">{success}</div>}
-
-          <button
-            onClick={handleAuth}
-            disabled={isLoading}
-            className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (mode === 'login' ? 'Iniciando sesión...' : 'Registrando...') : (mode === 'login' ? 'Acceder' : 'Crear Cuenta')}
-          </button>
-
-          {mode === 'login' && (
-            <div className="text-center text-xs text-slate-400 mt-4">
-              <p>Usuarios de prueba:</p>
-              <p className="mt-2">admin@infharma.com / admin123</p>
-              <p>maria.garcia@hospital.com / maria123</p>
+          {/* Pantalla de Verificando */}
+          {mode === 'verifying' && (
+            <div className="text-center py-12">
+              <Loader className="animate-spin mx-auto text-indigo-600 mb-4" size={48} />
+              <h2 className="text-2xl font-bold text-slate-800 mb-2">Verificando tu email...</h2>
+              <p className="text-slate-600">Por favor espera un momento.</p>
             </div>
+          )}
+
+          {/* Pantalla de Verificado */}
+          {mode === 'verified' && (
+            <div className="text-center py-8">
+              <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="text-emerald-600" size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-slate-800 mb-3">¡Email verificado!</h2>
+              <p className="text-slate-600 mb-6">
+                Tu cuenta ha sido activada correctamente. Iniciando sesión...
+              </p>
+            </div>
+          )}
+
+          {/* Pantalla de Login/Registro */}
+          {(mode === 'login' || mode === 'register') && (
+            <>
+              {/* Pestañas Login/Registro */}
+              <div className="flex border-b mb-6">
+                <button
+                  onClick={() => setMode('login')}
+                  className={`flex-1 pb-3 font-bold transition-colors ${mode === 'login' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}
+                >
+                  Iniciar Sesión
+                </button>
+                <button
+                  onClick={() => setMode('register')}
+                  className={`flex-1 pb-3 font-bold transition-colors ${mode === 'register' ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'}`}
+                >
+                  Registrarse
+                </button>
+              </div>
+
+              <h2 className="text-3xl font-bold text-center">{mode === 'login' ? 'Iniciar Sesión' : 'Crear Cuenta'}</h2>
+
+              {/* Campos comunes */}
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full p-3 border rounded-lg"
+                placeholder="Email"
+                disabled={isLoading}
+              />
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className="w-full p-3 border rounded-lg"
+                placeholder="Contraseña"
+                disabled={isLoading}
+              />
+
+              {/* Campos adicionales para registro */}
+              {mode === 'register' && (
+                <>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={e => setName(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Nombre completo"
+                    disabled={isLoading}
+                  />
+                  <input
+                    type="text"
+                    value={hospital}
+                    onChange={e => setHospital(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Hospital"
+                    disabled={isLoading}
+                  />
+                  <input
+                    type="text"
+                    value={specialty}
+                    onChange={e => setSpecialty(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Especialidad"
+                    disabled={isLoading}
+                  />
+                </>
+              )}
+
+              {error && (
+                <div className="text-rose-500 text-center text-sm bg-rose-50 border border-rose-200 rounded-lg p-3">
+                  {error}
+                  {unverifiedEmail && (
+                    <button
+                      onClick={handleResendEmail}
+                      className="block w-full mt-2 text-indigo-600 hover:text-indigo-700 font-medium underline"
+                    >
+                      Reenviar email de verificación
+                    </button>
+                  )}
+                </div>
+              )}
+              {success && <div className="text-emerald-500 text-center text-sm font-medium bg-emerald-50 border border-emerald-200 rounded-lg p-3">{success}</div>}
+
+              <button
+                onClick={handleAuth}
+                disabled={isLoading}
+                className="w-full py-3 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (mode === 'login' ? 'Iniciando sesión...' : 'Registrando...') : (mode === 'login' ? 'Acceder' : 'Crear Cuenta')}
+              </button>
+
+              {mode === 'login' && (
+                <div className="text-center text-xs text-slate-400 mt-4">
+                  <p>Usuarios de prueba:</p>
+                  <p className="mt-2">admin@infharma.com / admin123</p>
+                  <p>maria.garcia@hospital.com / maria123</p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
