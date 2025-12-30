@@ -1,5 +1,13 @@
 import express from 'express';
-import { register, login, refreshToken, logout, getCurrentUser } from '../controllers/authController.js';
+import {
+  register,
+  login,
+  refreshToken,
+  logout,
+  getCurrentUser,
+  verifyEmail,
+  resendVerification,
+} from '../controllers/authController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -8,6 +16,8 @@ const router = express.Router();
 router.post('/register', register);
 router.post('/login', login);
 router.post('/refresh-token', refreshToken);
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerification);
 
 // Protected routes
 router.post('/logout', authenticate, logout);
