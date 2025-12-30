@@ -90,12 +90,48 @@ const INITIAL_DATA = [
          footer: 'Nota: Revisar criterios específicos de financiación según CCAA.'
       },
       {
+         id: 'dig_screening', title: '2. Screening Pre-tratamiento', type: 'checklist',
+         items: [
+           'Descartar tuberculosis latente/activa (Mantoux/QuantiFERON + Rx tórax).',
+           'Serología VHB, VHC, VIH.',
+           'Hemograma completo, perfil hepático y renal.',
+           'Actualizar calendario vacunal (NO vacunas vivas durante tratamiento).',
+           'Descartar procesos infecciosos activos.',
+           'Valorar riesgo cardiovascular (antecedentes de insuficiencia cardíaca).'
+         ],
+         footer: 'Importante: Completar screening antes de iniciar tratamiento.'
+      },
+      {
          id: 'dig_poso_timeline', title: '3. Cronograma Posológico', type: 'timeline',
          data: [
             { week: 'Semana 0', dose: 160, label: 'INDUCCIÓN', subtext: '4 inyecciones', color: 'indigo', height: 100 },
             { week: 'Semana 2', dose: 80, label: 'INDUCCIÓN', subtext: '2 inyecciones', color: 'indigo', height: 50 },
             { week: 'Semana 4', dose: 40, label: 'MANTENIMIENTO', subtext: 'C/ 14 días', color: 'emerald', height: 25, isMaintenance: true }
          ]
+      },
+      {
+         id: 'dig_monitoring', title: '4. Monitorización durante Tratamiento', type: 'text',
+         content: '**Controles Periódicos:**\n\n• **Semana 4, 8 y 12:** Evaluar respuesta clínica (reducción CDAI ≥70 puntos o Mayo Score). Analítica: Hemograma, VSG, PCR, perfil hepático.\n\n• **Cada 3-6 meses durante mantenimiento:** Analítica completa + valoración clínica.\n\n• **Calprotectina fecal:** Considerar cada 3-6 meses para evaluar remisión mucosa.\n\n• **Monitorizar síntomas de infección** en cada visita (fiebre, tos, síntomas urinarios).\n\n**Respuesta Inadecuada:**\n- Si no hay respuesta a semana 12: Valorar escalado de dosis (40mg/semana) o cambio de estrategia.\n- Pérdida de respuesta: Considerar acortamiento intervalo o cambio de anti-TNF.'
+      },
+      {
+         id: 'dig_adverse', title: '5. Manejo de Efectos Adversos', type: 'text',
+         content: '**Reacciones en sitio de inyección:** Frecuentes (20%). Aplicar frío local, rotar zonas de inyección. Suelen mejorar con el tiempo.\n\n**Infecciones:**\n- **Leves-moderadas** (IRA, ITU): Tratar según protocolo habitual. Suspender temporalmente Adalimumab hasta resolución.\n- **Graves** (neumonía, sepsis, TBC activa): **SUSPENDER DEFINITIVAMENTE**. Hospitalización y tratamiento específico.\n\n**Reactivación Tuberculosis:** Alta sospecha si fiebre persistente, tos, sudoración nocturna. → Suspender inmediatamente y derivar a Neumología.\n\n**Reacciones de hipersensibilidad:** Raras pero graves. Si urticaria, broncoespasmo o anafilaxia → Suspender definitivamente y tratar sintomáticamente.\n\n**Hepatotoxicidad:** Si transaminasas >3x LSN → Suspender temporalmente. Reevaluar tras normalización.\n\n**Alteraciones hematológicas:** Si neutropenia <1000/μL o plaquetas <50000/μL → Suspender y valorar por Hematología.'
+      },
+      {
+         id: 'dig_suspension', title: '6. Criterios de Suspensión', type: 'checklist',
+         items: [
+           'Infección grave o sepsis.',
+           'Reactivación de tuberculosis.',
+           'Neoplasia activa (excepto cáncer piel no melanoma tras valoración individual).',
+           'Insuficiencia cardíaca descompensada (clase III-IV NYHA).',
+           'Reacción de hipersensibilidad grave.',
+           'Hepatotoxicidad severa (>5x LSN transaminasas).',
+           'Falta de respuesta tras 12 semanas de tratamiento óptimo.',
+           'Pérdida de respuesta mantenida pese a optimización.',
+           'Embarazo: Suspender en 3er trimestre (valorar individualmente).',
+           'Deseo del paciente tras información adecuada.'
+         ],
+         footer: 'Importante: Suspensión debe ser valorada por el equipo multidisciplinar (Digestivo + Farmacia Hospitalaria).'
       }
     ],
     patientSections: {
