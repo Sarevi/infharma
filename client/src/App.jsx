@@ -163,6 +163,107 @@ const CreateAreaModal = ({ isOpen, onClose, onConfirm, existingAreas }) => {
   );
 };
 
+const CopyTemplateModal = ({ isOpen, onClose, onConfirm, drugs, mode }) => {
+  const [selectedDrug, setSelectedDrug] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  if(!isOpen) return null;
+
+  const filteredDrugs = drugs.filter(d =>
+    d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    d.dci.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleConfirm = () => {
+    if(selectedDrug) {
+      const drug = drugs.find(d => d.id === selectedDrug);
+      onConfirm(drug);
+      setSelectedDrug('');
+      setSearchTerm('');
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm animate-in fade-in">
+       <div className="bg-white rounded-xl shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] flex flex-col">
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <FileText className="text-indigo-600"/>
+            {mode === 'pro' ? 'Copiar Protocolo Existente' : 'Copiar Documento de Paciente Existente'}
+          </h3>
+
+          <div className="mb-4">
+            <input
+              autoFocus
+              type="text"
+              className="w-full p-3 border border-slate-300 rounded-lg"
+              placeholder="Buscar fármaco..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex-1 overflow-y-auto mb-4 border rounded-lg">
+            {filteredDrugs.length === 0 ? (
+              <div className="p-8 text-center text-slate-400">
+                <p>No se encontraron fármacos</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {filteredDrugs.map(drug => (
+                  <div
+                    key={drug.id}
+                    onClick={() => setSelectedDrug(drug.id)}
+                    className={`p-4 cursor-pointer hover:bg-indigo-50 transition-colors ${selectedDrug === drug.id ? 'bg-indigo-100 border-l-4 border-indigo-600' : ''}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-slate-900">{drug.name}</p>
+                        <p className="text-sm text-slate-500">{drug.dci} • {drug.system}</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {mode === 'pro'
+                            ? `${drug.proSections?.length || 0} secciones`
+                            : `${drug.patientSections?.layout?.length || 0} tarjetas`}
+                        </p>
+                      </div>
+                      {selectedDrug === drug.id && (
+                        <Check className="text-indigo-600" size={24}/>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t">
+            <button
+              onClick={() => { onConfirm(null); setSelectedDrug(''); setSearchTerm(''); onClose(); }}
+              className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg"
+            >
+              Empezar en blanco
+            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setSelectedDrug(''); setSearchTerm(''); onClose(); }}
+                className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirm}
+                disabled={!selectedDrug}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed"
+              >
+                Copiar Plantilla
+              </button>
+            </div>
+          </div>
+       </div>
+    </div>
+  );
+};
+
 // --- CALCULADORA MÉDICA ---
 const CalculatorsModal = ({ isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('bsa');
@@ -432,8 +533,8 @@ const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onR
       onClick={() => isEditing && setIsActive(!isActive)}
       draggable={isEditing} onDragStart={(e) => isEditing && onDragStart(e, index)} onDragEnter={(e) => isEditing && onDragEnter(e, index)} onDragEnd={onDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={(e) => isEditing && onDrop(e, index)}
     >
-      {isEditing && (
-        <div className={`absolute -top-3 left-1/2 -translate-x-1/2 flex bg-white border rounded-lg p-2 items-center shadow-xl transition-all ${isActive ? 'opacity-100 z-[100]' : 'opacity-40 z-10'}`} onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      {isEditing && isActive && (
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex bg-white border rounded-lg p-2 items-center shadow-xl z-[100] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
              <div className="mr-2 text-slate-400 cursor-grab hover:text-indigo-600 rounded p-1" title="Arrastrar"><GripVertical size={16}/></div>
              <div className="w-px bg-slate-200 h-5 mx-2"></div>
 
@@ -570,6 +671,9 @@ const App = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('pro');
   const [showChat, setShowChat] = useState(false);
+  const [showCopyTemplateModal, setShowCopyTemplateModal] = useState(false);
+  const [templateMode, setTemplateMode] = useState('pro');
+  const [pendingNewDrugSystem, setPendingNewDrugSystem] = useState('');
 
   useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
@@ -580,7 +684,47 @@ const App = () => {
   const handleSaveDrug = (d) => { const now = new Date(); const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`; const toSave = { ...d, updatedAt: dateStr }; setData(prev => { const ex = prev.find(x=>x.id===toSave.id); return ex ? prev.map(x=>x.id===toSave.id?toSave:x) : [...prev, toSave]; }); setIsCreating(false); setIsEditing(false); };
   const handleCancelEdit = () => { if(isCreating){ setIsCreating(false); setIsEditing(false); setView('home'); setSelectedDrug(null); } else { const orig = data.find(d=>d.id===selectedDrug.id); if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig))); setIsEditing(false); }};
   const handleDeleteDrug = (id) => { if(window.confirm("¿Eliminar?")) { setData(data.filter(d=>d.id!==id)); setSelectedDrug(null); setView('home'); setIsEditing(false); }};
-  const handleAddNew = (sys='') => { setSelectedDrug({ id:`new-${Date.now()}`, name:'', dci:'', system:sys, type:'', presentation:'', updatedAt: new Date().toLocaleDateString(), proSections:[], patientSections:{intro:'',admin:[],layout:[]} }); setIsCreating(true); setIsEditing(true); setView('detail'); setActiveTab('pro'); };
+
+  const handleAddNew = (sys='') => {
+    setPendingNewDrugSystem(sys);
+    setTemplateMode('pro');
+    setShowCopyTemplateModal(true);
+  };
+
+  const handleCopyTemplate = (templateDrug) => {
+    const newId = `new-${Date.now()}`;
+    if (templateDrug) {
+      // Copiar desde plantilla
+      const copiedDrug = JSON.parse(JSON.stringify(templateDrug));
+      setSelectedDrug({
+        ...copiedDrug,
+        id: newId,
+        name: '',
+        dci: '',
+        system: pendingNewDrugSystem,
+        type: '',
+        presentation: '',
+        updatedAt: new Date().toLocaleDateString()
+      });
+    } else {
+      // Empezar en blanco
+      setSelectedDrug({
+        id: newId,
+        name: '',
+        dci: '',
+        system: pendingNewDrugSystem,
+        type: '',
+        presentation: '',
+        updatedAt: new Date().toLocaleDateString(),
+        proSections: [],
+        patientSections: { intro: '', admin: [], layout: [] }
+      });
+    }
+    setIsCreating(true);
+    setIsEditing(true);
+    setView('detail');
+    setActiveTab('pro');
+  };
   const handleCreateArea = (name) => { if(name && !customAreas.includes(name)) { setCustomAreas([...customAreas, name]); setExpandedAreas({...expandedAreas, [name]: true}); } };
   const getOutdatedDrugs = () => { const parseDate = (str) => { if(!str) return new Date(0); const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); }; return [...data].sort((a,b) => parseDate(a.updatedAt) - parseDate(b.updatedAt)).slice(0, 2); };
   const outdatedDrugs = getOutdatedDrugs();
@@ -621,7 +765,8 @@ const App = () => {
       <SettingsModal isOpen={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings}/>
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
       <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...customAreas])).sort()}/>
-      
+      <CopyTemplateModal isOpen={showCopyTemplateModal} onClose={()=>setShowCopyTemplateModal(false)} onConfirm={handleCopyTemplate} drugs={data} mode={templateMode}/>
+
       {!isAuthenticated ? <LoginPage /> : (
         <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
           <aside className="w-[260px] bg-white border-r border-slate-200 flex flex-col z-20 no-print">
@@ -697,7 +842,7 @@ const App = () => {
       {isAuthenticated && !showChat && (
         <button
           onClick={() => setShowChat(true)}
-          className="fixed bottom-28 left-8 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
+          className="fixed bottom-36 left-4 w-16 h-16 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-700 transition-all hover:scale-110 flex items-center justify-center no-print"
           style={{ zIndex: 9999 }}
           title="Abrir Chat"
         >
