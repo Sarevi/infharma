@@ -16,7 +16,7 @@ const seedUsers = async () => {
     console.log('Syncing database...\n');
     await syncDatabase(true);
 
-    // Create test users
+    // Create test users (all verified for testing)
     const users = [
       {
         email: 'admin@infharma.com',
@@ -25,6 +25,7 @@ const seedUsers = async () => {
         role: 'admin',
         hospital: 'Hospital General',
         specialty: 'Farmacia Hospitalaria',
+        emailVerified: true,
       },
       {
         email: 'maria.garcia@hospital.com',
@@ -33,6 +34,7 @@ const seedUsers = async () => {
         role: 'farmaceutico',
         hospital: 'Hospital San Juan',
         specialty: 'Farmacia Clínica',
+        emailVerified: true,
       },
       {
         email: 'juan.lopez@hospital.com',
@@ -41,6 +43,7 @@ const seedUsers = async () => {
         role: 'farmaceutico',
         hospital: 'Hospital Universitario',
         specialty: 'Oncología',
+        emailVerified: true,
       },
       {
         email: 'ana.martinez@hospital.com',
@@ -49,6 +52,7 @@ const seedUsers = async () => {
         role: 'farmaceutico',
         hospital: 'Hospital La Paz',
         specialty: 'Pediatría',
+        emailVerified: true,
       },
       {
         email: 'carlos.ruiz@hospital.com',
@@ -57,6 +61,7 @@ const seedUsers = async () => {
         role: 'farmaceutico',
         hospital: 'Hospital Ramón y Cajal',
         specialty: 'Farmacia Hospitalaria',
+        emailVerified: true,
       },
     ];
 
