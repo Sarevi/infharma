@@ -1,4 +1,8 @@
-import nodemailer from 'nodemailer';
+// Usar createRequire para importar nodemailer (fix para ES modules)
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const nodemailer = require('nodemailer');
+
 import crypto from 'crypto';
 
 // Configuración del transportador de email
