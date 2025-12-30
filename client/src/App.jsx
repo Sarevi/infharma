@@ -735,14 +735,6 @@ const LoginPage = () => {
               >
                 {isLoading ? (mode === 'login' ? 'Iniciando sesión...' : 'Registrando...') : (mode === 'login' ? 'Acceder' : 'Crear Cuenta')}
               </button>
-
-              {mode === 'login' && (
-                <div className="text-center text-xs text-slate-400 mt-4">
-                  <p>Usuarios de prueba:</p>
-                  <p className="mt-2">admin@infharma.com / admin123</p>
-                  <p>maria.garcia@hospital.com / maria123</p>
-                </div>
-              )}
             </>
           )}
         </div>
