@@ -1,19 +1,20 @@
 import crypto from 'crypto';
 
 // Importar nodemailer dinámicamente (fix para ES modules)
-let nodemailer;
+let nodemailerModule;
 
 // Configuración del transportador de email
 // IMPORTANTE: Configurar variables de entorno en producción
 const createTransporter = async () => {
   // Importar nodemailer la primera vez que se llame
-  if (!nodemailer) {
-    nodemailer = (await import('nodemailer')).default;
+  if (!nodemailerModule) {
+    const imported = await import('nodemailer');
+    nodemailerModule = imported.default || imported;
   }
 
   // En producción, usar servicio real (Gmail, SendGrid, AWS SES, etc.)
   if (process.env.NODE_ENV === 'production' || process.env.EMAIL_USER) {
-    return nodemailer.createTransporter({
+    return nodemailerModule.createTransporter({
       service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
@@ -25,9 +26,9 @@ const createTransporter = async () => {
   // En desarrollo SIN configuración: usar Ethereal automáticamente
   // Ethereal crea cuentas de prueba temporales y muestra URLs de preview
   console.log('📧 Usando Ethereal para emails de desarrollo...');
-  const testAccount = await nodemailer.createTestAccount();
+  const testAccount = await nodemailerModule.createTestAccount();
 
-  return nodemailer.createTransporter({
+  return nodemailerModule.createTransporter({
     host: 'smtp.ethereal.email',
     port: 587,
     secure: false,
@@ -122,7 +123,12 @@ El equipo de InFHarma
     console.log('✅ Email de verificación enviado:', info.messageId);
 
     // En desarrollo con Ethereal, muestra URL de preview
-    const previewUrl = nodemailer.getTestMessageUrl(info);
+    // Cargar nodemailer si no está cargado aún
+    if (!nodemailerModule) {
+      const imported = await import('nodemailer');
+      nodemailerModule = imported.default || imported;
+    }
+    const previewUrl = nodemailerModule.getTestMessageUrl(info);
     if (previewUrl) {
       console.log('');
       console.log('═══════════════════════════════════════════════════════');
