@@ -1,13 +1,16 @@
-// Usar createRequire para importar nodemailer (fix para ES modules)
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-const nodemailer = require('nodemailer');
-
 import crypto from 'crypto';
+
+// Importar nodemailer dinámicamente (fix para ES modules)
+let nodemailer;
 
 // Configuración del transportador de email
 // IMPORTANTE: Configurar variables de entorno en producción
 const createTransporter = async () => {
+  // Importar nodemailer la primera vez que se llame
+  if (!nodemailer) {
+    nodemailer = (await import('nodemailer')).default;
+  }
+
   // En producción, usar servicio real (Gmail, SendGrid, AWS SES, etc.)
   if (process.env.NODE_ENV === 'production' || process.env.EMAIL_USER) {
     return nodemailer.createTransporter({
