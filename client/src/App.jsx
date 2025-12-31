@@ -466,11 +466,14 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
         ref={contentEditableRef}
         contentEditable={true}
         suppressContentEditableWarning={true}
-        className={`w-full p-2 border-b-2 border-indigo-300 bg-indigo-50/50 outline-none focus:border-indigo-500 focus:bg-indigo-100/50 transition-colors min-h-[1.5em] rounded-t ${className}`}
+        className={`w-full p-2 border-b-2 border-indigo-300 bg-indigo-50/50 outline-none focus:border-indigo-500 focus:bg-indigo-100/50 transition-colors min-h-[1.5em] rounded-t cursor-text ${className}`}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
         onFocus={() => setIsFocused(true)}
         onBlur={(e) => { setIsFocused(false); onChange(e.currentTarget.innerHTML); }}
         style={{ minHeight: multiline ? '1.5em' : 'auto', display: multiline ? 'block' : 'inline-block', width: '100%' }}
+        onClick={(e) => {
+          e.currentTarget.focus();
+        }}
       />
       {(!value && placeholder) && <div className="absolute top-1 left-1 text-slate-300 pointer-events-none text-xs">{placeholder}</div>}
     </div>
@@ -875,7 +878,7 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
          <div className={`${isDanger ? 'bg-rose-50 border-rose-500 text-rose-900' : 'bg-amber-50 border-amber-500 text-amber-900'} border-l-4 p-4 rounded-r-md flex gap-3`}>
             <AlertTriangle size={20} className="mt-0.5 flex-shrink-0"/>
             <div className="w-full">
-               {isEditing ? <EditableText value={section.title} onChange={(v) => updateContent('title', v)} className="font-bold w-full mb-1"/> : <h3 className="font-bold uppercase tracking-wide mb-1" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
+               {isEditing ? <EditableText value={section.title} onChange={(v) => updateContent('title', v)} isEditing={isEditing} className="font-bold w-full mb-1"/> : <h3 className="font-bold uppercase tracking-wide mb-1" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
                <div className="text-sm leading-relaxed font-medium">{children}</div>
             </div>
          </div>
@@ -892,6 +895,7 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
             <EditableText
               value={section.title}
               onChange={(v) => updateContent('title', v)}
+              isEditing={isEditing}
               className="text-2xl font-bold text-slate-800 w-full"
             />
           </div>
