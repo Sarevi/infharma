@@ -55,14 +55,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (email, password, name, hospital, specialty) => {
+  const register = async (email, password, name, hospital) => {
     try {
       const response = await apiClient.post('/auth/register', {
         email,
         password,
         name,
         hospital,
-        specialty,
       });
 
       // Registro exitoso - NO auto-login, usuario debe verificar email primero

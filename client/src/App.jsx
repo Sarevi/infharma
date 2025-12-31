@@ -201,6 +201,25 @@ const CreateAreaModal = ({ isOpen, onClose, onConfirm, existingAreas }) => {
   );
 };
 
+const CreateSubAreaModal = ({ isOpen, onClose, onConfirm, areaName }) => {
+  const [subAreaName, setSubAreaName] = useState('');
+  if(!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm animate-in fade-in">
+       <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"><FolderMinus className="text-indigo-600"/> Nueva Sub-área en {areaName}</h3>
+          <form onSubmit={(e) => { e.preventDefault(); if(subAreaName.trim()) { onConfirm(areaName, subAreaName.trim()); setSubAreaName(''); onClose(); }}}>
+             <input autoFocus type="text" className="w-full p-3 border border-slate-300 rounded-lg mb-4" placeholder="Ej: Psoriasis, Dermatitis, etc." value={subAreaName} onChange={e => setSubAreaName(e.target.value)} />
+             <div className="flex justify-end gap-3">
+                <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg">Cancelar</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Crear Sub-área</button>
+             </div>
+          </form>
+       </div>
+    </div>
+  );
+};
+
 const CopyTemplateModal = ({ isOpen, onClose, onConfirm, drugs, mode }) => {
   const [selectedDrug, setSelectedDrug] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -458,7 +477,6 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [hospital, setHospital] = useState('');
-  const [specialty, setSpecialty] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -555,7 +573,7 @@ const LoginPage = () => {
       setError('');
       setSuccess('');
 
-      const result = await register(email, password, name, hospital, specialty);
+      const result = await register(email, password, name, hospital);
 
       if (result.success) {
         setMode('email-sent');
@@ -699,15 +717,6 @@ const LoginPage = () => {
                     onKeyPress={handleKeyPress}
                     className="w-full p-3 border rounded-lg"
                     placeholder="Hospital"
-                    disabled={isLoading}
-                  />
-                  <input
-                    type="text"
-                    value={specialty}
-                    onChange={e => setSpecialty(e.target.value)}
-                    onKeyPress={handleKeyPress}
-                    className="w-full p-3 border rounded-lg"
-                    placeholder="Especialidad"
                     disabled={isLoading}
                   />
                 </>
@@ -912,10 +921,21 @@ const App = () => {
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSettings, setShowSettings] = useState(false);
-  const [showCalculator, setShowCalculator] = useState(false); 
+  const [showCalculator, setShowCalculator] = useState(false);
   const [expandedAreas, setExpandedAreas] = useState({});
   const [showCreateArea, setShowCreateArea] = useState(false);
-  const [customAreas, setCustomAreas] = useState(() => JSON.parse(localStorage.getItem('infharma_custom_areas') || '[]'));
+  const [showCreateSubArea, setShowCreateSubArea] = useState(false);
+  const [selectedAreaForSubArea, setSelectedAreaForSubArea] = useState('');
+  const [customAreas, setCustomAreas] = useState(() => {
+    const saved = localStorage.getItem('infharma_custom_areas');
+    if (!saved) return {};
+    const parsed = JSON.parse(saved);
+    // Migrar de array a objeto si es necesario
+    if (Array.isArray(parsed)) {
+      return parsed.reduce((acc, area) => ({ ...acc, [area]: { subAreas: [] } }), {});
+    }
+    return parsed;
+  });
   const [data, setData] = useState(() => JSON.parse(localStorage.getItem('infharma_data')) || INITIAL_DATA);
   const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('infharma_settings')) || INITIAL_SETTINGS);
   const [isCreating, setIsCreating] = useState(false);
@@ -925,6 +945,7 @@ const App = () => {
   const [showCopyTemplateModal, setShowCopyTemplateModal] = useState(false);
   const [templateMode, setTemplateMode] = useState('pro');
   const [pendingNewDrugSystem, setPendingNewDrugSystem] = useState('');
+  const [pendingSubArea, setPendingSubArea] = useState('');
 
   useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
@@ -936,8 +957,9 @@ const App = () => {
   const handleCancelEdit = () => { if(isCreating){ setIsCreating(false); setIsEditing(false); setView('home'); setSelectedDrug(null); } else { const orig = data.find(d=>d.id===selectedDrug.id); if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig))); setIsEditing(false); }};
   const handleDeleteDrug = (id) => { if(window.confirm("¿Eliminar?")) { setData(data.filter(d=>d.id!==id)); setSelectedDrug(null); setView('home'); setIsEditing(false); }};
 
-  const handleAddNew = (sys='') => {
+  const handleAddNew = (sys='', subArea='') => {
     setPendingNewDrugSystem(sys);
+    setPendingSubArea(subArea);
     setTemplateMode('pro');
     setShowCopyTemplateModal(true);
   };
@@ -953,6 +975,7 @@ const App = () => {
         name: '',
         dci: '',
         system: pendingNewDrugSystem,
+        subArea: pendingSubArea,
         type: '',
         presentation: '',
         updatedAt: new Date().toLocaleDateString()
@@ -962,6 +985,7 @@ const App = () => {
       setSelectedDrug({
         id: newId,
         name: '',
+        subArea: pendingSubArea,
         dci: '',
         system: pendingNewDrugSystem,
         type: '',
@@ -976,7 +1000,30 @@ const App = () => {
     setView('detail');
     setActiveTab('pro');
   };
-  const handleCreateArea = (name) => { if(name && !customAreas.includes(name)) { setCustomAreas([...customAreas, name]); setExpandedAreas({...expandedAreas, [name]: true}); } };
+  const handleCreateArea = (name) => {
+    if(name && !customAreas[name]) {
+      setCustomAreas({...customAreas, [name]: { subAreas: [] }});
+      setExpandedAreas({...expandedAreas, [name]: true});
+    }
+  };
+
+  const handleCreateSubArea = (areaName, subAreaName) => {
+    if (customAreas[areaName]) {
+      const updatedArea = {
+        ...customAreas[areaName],
+        subAreas: [...(customAreas[areaName].subAreas || []), subAreaName]
+      };
+      setCustomAreas({...customAreas, [areaName]: updatedArea});
+    } else {
+      // Si el área no existe en customAreas, créala
+      setCustomAreas({...customAreas, [areaName]: { subAreas: [subAreaName] }});
+    }
+  };
+
+  const openSubAreaModal = (areaName) => {
+    setSelectedAreaForSubArea(areaName);
+    setShowCreateSubArea(true);
+  };
   const getOutdatedDrugs = () => { const parseDate = (str) => { if(!str) return new Date(0); const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); }; return [...data].sort((a,b) => parseDate(a.updatedAt) - parseDate(b.updatedAt)).slice(0, 2); };
   const outdatedDrugs = getOutdatedDrugs();
   const handleOpenLink = (url) => window.open(url, '_blank', 'noopener,noreferrer');
@@ -1030,7 +1077,8 @@ const App = () => {
       <style>{`@media print { @page { size: A4; margin: 0; } body { background: white; } .no-print { display: none !important; } aside, header { display: none !important; } .a4-container { width: 100% !important; height: 100% !important; box-shadow: none !important; margin: 0 !important; } button { display: none !important; } input, textarea { border: none !important; } }`}</style>
       <SettingsModal isOpen={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings}/>
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
-      <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...customAreas])).sort()}/>
+      <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...Object.keys(customAreas)])).sort()}/>
+      <CreateSubAreaModal isOpen={showCreateSubArea} onClose={()=>setShowCreateSubArea(false)} onConfirm={handleCreateSubArea} areaName={selectedAreaForSubArea}/>
       <CopyTemplateModal isOpen={showCopyTemplateModal} onClose={()=>setShowCopyTemplateModal(false)} onConfirm={handleCopyTemplate} drugs={data} mode={templateMode}/>
 
       {!isAuthenticated ? <LoginPage /> : (
@@ -1056,14 +1104,71 @@ const App = () => {
                  )}
                </button>
 
-               {Array.from(new Set([...data.map(d=>d.system).filter(Boolean),...customAreas])).sort().map(sys => {
-                  const drugs = data.filter(d => (d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.dci.toLowerCase().includes(searchTerm.toLowerCase())) && d.system === sys);
-                  if(drugs.length === 0 && !customAreas.includes(sys) && searchTerm) return null;
+               {Array.from(new Set([...data.map(d=>d.system).filter(Boolean),...Object.keys(customAreas)])).sort().map(sys => {
+                  const allDrugsInArea = data.filter(d => d.system === sys && (d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.dci.toLowerCase().includes(searchTerm.toLowerCase())));
+                  const subAreas = customAreas[sys]?.subAreas || [];
+                  const drugsWithoutSubArea = allDrugsInArea.filter(d => !d.subArea);
+
+                  if(allDrugsInArea.length === 0 && !customAreas[sys] && searchTerm) return null;
                   const isOpen = expandedAreas[sys] || searchTerm;
+
                   return (
                     <div key={sys} className="mb-1">
-                       <button onClick={()=>setExpandedAreas({...expandedAreas,[sys]:!expandedAreas[sys]})} className="flex items-center justify-between w-full px-2 py-2 text-left hover:bg-slate-50 rounded"><div className="flex items-center text-sm font-bold text-slate-600"><FolderPlus size={16} className="mr-2 text-slate-400"/>{sys}</div>{isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}</button>
-                       {isOpen && <div className="pl-6 mt-1 space-y-1">{drugs.map(d=><button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-sm text-slate-500 hover:text-indigo-600 py-1">{d.name}</button>)}<button onClick={()=>handleAddNew(sys)} className="text-xs text-indigo-400 flex items-center mt-2 hover:text-indigo-600"><Plus size={12} className="mr-1"/> Añadir Fármaco</button></div>}
+                       <div className="flex items-center justify-between group">
+                         <button onClick={()=>setExpandedAreas({...expandedAreas,[sys]:!expandedAreas[sys]})} className="flex items-center justify-between flex-1 px-2 py-2 text-left hover:bg-slate-50 rounded">
+                           <div className="flex items-center text-sm font-bold text-slate-600">
+                             <FolderPlus size={16} className="mr-2 text-slate-400"/>{sys}
+                           </div>
+                           {isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
+                         </button>
+                         <button onClick={()=>openSubAreaModal(sys)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-indigo-50 rounded text-indigo-400" title="Añadir sub-área">
+                           <FolderMinus size={14}/>
+                         </button>
+                       </div>
+                       {isOpen && (
+                         <div className="pl-6 mt-1 space-y-1">
+                           {/* Medicamentos sin sub-área */}
+                           {drugsWithoutSubArea.map(d=>
+                             <button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-sm text-slate-500 hover:text-indigo-600 py-1">
+                               {d.name}
+                             </button>
+                           )}
+
+                           {/* Sub-áreas */}
+                           {subAreas.map(subArea => {
+                             const subAreaDrugs = allDrugsInArea.filter(d => d.subArea === subArea);
+                             const subAreaKey = `${sys}-${subArea}`;
+                             const isSubAreaOpen = expandedAreas[subAreaKey] || searchTerm;
+
+                             return (
+                               <div key={subArea} className="mt-2">
+                                 <button onClick={()=>setExpandedAreas({...expandedAreas,[subAreaKey]:!expandedAreas[subAreaKey]})} className="flex items-center justify-between w-full px-2 py-1 text-left hover:bg-slate-100 rounded">
+                                   <div className="flex items-center text-xs font-semibold text-slate-500">
+                                     <FolderMinus size={12} className="mr-2 text-slate-300"/>{subArea}
+                                   </div>
+                                   {isSubAreaOpen?<ChevronDown size={12}/>:<ChevronRight size={12}/>}
+                                 </button>
+                                 {isSubAreaOpen && (
+                                   <div className="pl-6 mt-1 space-y-1">
+                                     {subAreaDrugs.map(d=>
+                                       <button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-xs text-slate-400 hover:text-indigo-600 py-1">
+                                         {d.name}
+                                       </button>
+                                     )}
+                                     <button onClick={()=>handleAddNew(sys, subArea)} className="text-xs text-indigo-300 flex items-center mt-1 hover:text-indigo-500">
+                                       <Plus size={10} className="mr-1"/> Añadir Fármaco
+                                     </button>
+                                   </div>
+                                 )}
+                               </div>
+                             );
+                           })}
+
+                           <button onClick={()=>handleAddNew(sys)} className="text-xs text-indigo-400 flex items-center mt-2 hover:text-indigo-600">
+                             <Plus size={12} className="mr-1"/> Añadir Fármaco
+                           </button>
+                         </div>
+                       )}
                     </div>
                   )
                })}
@@ -1078,8 +1183,8 @@ const App = () => {
             <div className="flex-1 overflow-y-auto bg-slate-50">
                {view === 'home' ? (
                  <div className="max-w-6xl mx-auto pt-12 px-8 pb-20">
-                    <h1 className="text-4xl font-extrabold text-slate-900 mb-2">{settings.hospitalName}</h1>
-                    <p className="text-slate-500 mb-10">Panel de Control • {settings.pharmacistName}</p>
+                    <h1 className="text-4xl font-extrabold text-slate-900 mb-2">{user?.hospital || 'Hospital'}</h1>
+                    <p className="text-slate-500 mb-10">Panel de Control • {user?.name || 'Usuario'}</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                        <div onClick={() => setShowCreateArea(true)} className="bg-indigo-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:bg-indigo-700 transition-colors flex flex-col justify-between min-h-[160px] relative overflow-hidden group"><div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110"><FolderPlus size={100}/></div><div className="p-3 bg-white/20 w-fit rounded-lg mb-4"><Plus size={24}/></div><div><p className="font-bold text-lg">Nueva Área</p><p className="text-indigo-200 text-sm">Crear carpeta</p></div></div>
                        <div onClick={() => handleOpenLink('https://www.aemps.gob.es/medicamentos-de-uso-humano/')} className="bg-white rounded-xl p-6 border shadow-sm cursor-pointer hover:border-rose-300 hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] group"><div className="flex justify-between items-start"><div className="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-100 transition-colors"><AlertCircle size={24}/></div><ExternalLink size={16} className="text-slate-300"/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg leading-tight">Alertas Seguridad</p><p className="text-slate-500 text-sm mt-1">Web AEMPS Humana</p></div></div>
