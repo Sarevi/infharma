@@ -1333,7 +1333,158 @@ const App = () => {
           </div>
         )
       }
-      return <EditableText value={section.content} isEditing={isEditing} multiline onChange={v => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s => s.id === section.id ? {...s, content: v} : s)})} className="text-sm text-slate-700 leading-relaxed block w-full"/>;
+
+      // Para secciones de texto libre (type='text' o sin tipo específico)
+      // Soportar tanto contenido simple como items mixtos (checklist + texto)
+      if (section.items && Array.isArray(section.items)) {
+        // Tiene items mixtos, usar la misma lógica que checklist
+        const toggleItemType = (idx) => {
+          const n = [...section.items];
+          const item = n[idx];
+          if (typeof item === 'string') {
+            n[idx] = { type: 'text', content: item };
+          } else if (item.type === 'text') {
+            n[idx] = item.content;
+          }
+          updateItems(n);
+        };
+
+        const getItemContent = (item) => typeof item === 'string' ? item : item.content;
+        const isCheckboxItem = (item) => typeof item === 'string' || item.type === 'checkbox';
+
+        return (
+          <div className="space-y-4">
+            <ul className="space-y-3">
+              {section.items.map((it, i) => {
+                const isCheckbox = isCheckboxItem(it);
+                return (
+                  <li key={i} className="flex items-start text-sm text-slate-700 group/item">
+                    {isCheckbox ? (
+                      <CheckCircle size={16} className="mt-1 mr-3 text-emerald-600 shrink-0"/>
+                    ) : (
+                      <FileText size={16} className="mt-1 mr-3 text-indigo-500 shrink-0"/>
+                    )}
+                    <EditableText
+                      value={getItemContent(it)}
+                      isEditing={isEditing}
+                      multiline
+                      onChange={(v) => {
+                        const n=[...section.items];
+                        n[i] = typeof n[i] === 'string' ? v : { ...n[i], content: v };
+                        updateItems(n);
+                      }}
+                      className={`font-medium w-full ${isCheckbox ? 'text-slate-600' : 'text-slate-700 bg-slate-50 p-2 rounded border-l-2 border-indigo-300'}`}
+                    />
+                    {isEditing && (
+                      <div className="flex gap-1 ml-2">
+                        <button
+                          onClick={() => toggleItemType(i)}
+                          className="text-slate-400 hover:text-indigo-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                          title={isCheckbox ? "Convertir a texto libre" : "Convertir a checkbox"}
+                        >
+                          {isCheckbox ? <FileText size={12}/> : <CheckCircle size={12}/>}
+                        </button>
+                        <button
+                          onClick={()=>{const n=[...section.items];n.splice(i,1);updateItems(n)}}
+                          className="text-rose-300 hover:text-rose-500"
+                        >
+                          <Trash2 size={12}/>
+                        </button>
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+              {isEditing && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={()=>updateItems([...section.items, 'Nuevo requisito'])}
+                    className="text-xs text-emerald-600 mt-2 font-bold hover:text-emerald-700"
+                  >
+                    + CHECKLIST
+                  </button>
+                  <button
+                    onClick={()=>updateItems([...section.items, { type: 'text', content: 'Texto libre...' }])}
+                    className="text-xs text-indigo-500 mt-2 font-bold hover:text-indigo-700"
+                  >
+                    + TEXTO LIBRE
+                  </button>
+                </div>
+              )}
+            </ul>
+            {(section.footer || isEditing) && (
+              <div className="mt-2 flex items-start gap-2 group/footer">
+                <EditableText
+                  value={section.footer || ''}
+                  isEditing={isEditing}
+                  multiline
+                  placeholder={isEditing ? "Añadir notas..." : ""}
+                  onChange={(v) => updateFooter(v)}
+                  className="text-sm text-slate-500 italic border-l-2 border-slate-200 pl-3 block w-full"
+                />
+                {isEditing && section.footer && (
+                  <button
+                    onClick={() => updateFooter('')}
+                    className="text-rose-300 hover:text-rose-500 opacity-0 group-hover/footer:opacity-100 transition-opacity mt-1"
+                    title="Eliminar nota"
+                  >
+                    <Trash2 size={12}/>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      // Texto libre simple (sin items todavía)
+      return (
+        <div className="space-y-3">
+          <EditableText
+            value={section.content || ''}
+            isEditing={isEditing}
+            multiline
+            onChange={v => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s => s.id === section.id ? {...s, content: v} : s)})}
+            className="text-sm text-slate-700 leading-relaxed block w-full"
+          />
+          {isEditing && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  // Convertir content a items y añadir checklist
+                  const currentContent = section.content || '';
+                  const newItems = currentContent.trim() ? [{ type: 'text', content: currentContent }, 'Nuevo requisito'] : ['Nuevo requisito'];
+                  setSelectedDrug({
+                    ...selectedDrug,
+                    proSections: selectedDrug.proSections.map(s =>
+                      s.id === section.id ? {...s, items: newItems, content: ''} : s
+                    )
+                  });
+                }}
+                className="text-xs text-emerald-600 font-bold hover:text-emerald-700"
+              >
+                + CHECKLIST
+              </button>
+              <button
+                onClick={() => {
+                  // Convertir content a items y añadir texto libre
+                  const currentContent = section.content || '';
+                  const newItems = currentContent.trim() ? [{ type: 'text', content: currentContent }, { type: 'text', content: 'Texto libre...' }] : [{ type: 'text', content: 'Texto libre...' }];
+                  setSelectedDrug({
+                    ...selectedDrug,
+                    proSections: selectedDrug.proSections.map(s =>
+                      s.id === section.id ? {...s, items: newItems, content: ''} : s
+                    )
+                  });
+                }}
+                className="text-xs text-indigo-500 font-bold hover:text-indigo-700"
+              >
+                + TEXTO LIBRE
+              </button>
+            </div>
+          )}
+        </div>
+      );
   };
 
   return (
