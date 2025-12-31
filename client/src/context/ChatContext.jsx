@@ -27,7 +27,8 @@ export const ChatProvider = ({ children }) => {
     const token = localStorage.getItem('accessToken');
     if (!token) return;
 
-    const socketInstance = io('http://localhost:3001', {
+    const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001';
+    const socketInstance = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket'],
     });
