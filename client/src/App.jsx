@@ -207,12 +207,12 @@ const CreateSubAreaModal = ({ isOpen, onClose, onConfirm, areaName }) => {
   return (
     <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm animate-in fade-in">
        <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
-          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"><FolderMinus className="text-indigo-600"/> Nueva Sub-área en {areaName}</h3>
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2"><FolderMinus className="text-indigo-600"/> Nueva Patología en {areaName}</h3>
           <form onSubmit={(e) => { e.preventDefault(); if(subAreaName.trim()) { onConfirm(areaName, subAreaName.trim()); setSubAreaName(''); onClose(); }}}>
-             <input autoFocus type="text" className="w-full p-3 border border-slate-300 rounded-lg mb-4" placeholder="Ej: Psoriasis, Dermatitis, etc." value={subAreaName} onChange={e => setSubAreaName(e.target.value)} />
+             <input autoFocus type="text" className="w-full p-3 border border-slate-300 rounded-lg mb-4" placeholder="Ej: Psoriasis, Dermatitis, Alopecia..." value={subAreaName} onChange={e => setSubAreaName(e.target.value)} />
              <div className="flex justify-end gap-3">
                 <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Crear Sub-área</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold">Crear Patología</button>
              </div>
           </form>
        </div>
@@ -444,6 +444,76 @@ const IconPicker = ({ isOpen, onClose, onSelect }) => {
              <button key={name} onClick={()=>{onSelect(name); onClose();}} className="p-2 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 rounded-lg flex justify-center items-center transition-colors" title={name}><Icon size={18}/></button>
           ))}
        </div>
+    </div>
+  );
+};
+
+const InitialSetupModal = ({ isOpen, onComplete, user }) => {
+  const [hospitalName, setHospitalName] = useState(user?.hospital || '');
+  const [pharmacistName, setPharmacistName] = useState(user?.name || '');
+
+  const handleComplete = () => {
+    if (hospitalName.trim() && pharmacistName.trim()) {
+      onComplete({ hospitalName: hospitalName.trim(), pharmacistName: pharmacistName.trim() });
+    }
+  };
+
+  if (!isOpen) return null;
+
+  const isValid = hospitalName.trim() && pharmacistName.trim();
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center backdrop-blur-md animate-in fade-in">
+      <div className="bg-white rounded-2xl w-full max-w-lg p-10 shadow-2xl">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <Stethoscope size={32} className="text-white"/>
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">¡Bienvenido a InFHarma!</h2>
+          <p className="text-slate-600">Configura tu perfil para empezar</p>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Nombre del Hospital</label>
+            <input
+              autoFocus
+              type="text"
+              className="w-full p-4 border-2 border-slate-200 rounded-lg focus:border-indigo-600 outline-none transition-colors"
+              value={hospitalName}
+              onChange={e => setHospitalName(e.target.value)}
+              placeholder="Ej: San Juan de Dios"
+              onKeyPress={e => e.key === 'Enter' && isValid && handleComplete()}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">Tu Nombre</label>
+            <input
+              type="text"
+              className="w-full p-4 border-2 border-slate-200 rounded-lg focus:border-indigo-600 outline-none transition-colors"
+              value={pharmacistName}
+              onChange={e => setPharmacistName(e.target.value)}
+              placeholder="Ej: Dr. García"
+              onKeyPress={e => e.key === 'Enter' && isValid && handleComplete()}
+            />
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <button
+            onClick={handleComplete}
+            disabled={!isValid}
+            className="w-full py-4 bg-indigo-600 text-white rounded-lg font-bold text-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors"
+          >
+            Comenzar
+          </button>
+        </div>
+
+        <p className="text-xs text-slate-400 text-center mt-4">
+          Podrás modificar esta información en cualquier momento desde Configuración
+        </p>
+      </div>
     </div>
   );
 };
@@ -946,6 +1016,11 @@ const App = () => {
   const [templateMode, setTemplateMode] = useState('pro');
   const [pendingNewDrugSystem, setPendingNewDrugSystem] = useState('');
   const [pendingSubArea, setPendingSubArea] = useState('');
+  const [showInitialSetup, setShowInitialSetup] = useState(() => {
+    // Mostrar setup inicial si el usuario no tiene configuración guardada
+    const hasCompletedSetup = localStorage.getItem('infharma_setup_completed');
+    return !hasCompletedSetup;
+  });
 
   useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
@@ -953,6 +1028,11 @@ const App = () => {
 
   const handleLogout = () => { authLogout(); setView('home'); setIsEditing(false); };
   const handleSaveSettings = (newSettings) => { setSettings(newSettings); };
+  const handleCompleteInitialSetup = (setupData) => {
+    setSettings({ ...settings, hospitalName: setupData.hospitalName, pharmacistName: setupData.pharmacistName });
+    localStorage.setItem('infharma_setup_completed', 'true');
+    setShowInitialSetup(false);
+  };
   const handleSaveDrug = (d) => { const now = new Date(); const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`; const toSave = { ...d, updatedAt: dateStr }; setData(prev => { const ex = prev.find(x=>x.id===toSave.id); return ex ? prev.map(x=>x.id===toSave.id?toSave:x) : [...prev, toSave]; }); setIsCreating(false); setIsEditing(false); };
   const handleCancelEdit = () => { if(isCreating){ setIsCreating(false); setIsEditing(false); setView('home'); setSelectedDrug(null); } else { const orig = data.find(d=>d.id===selectedDrug.id); if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig))); setIsEditing(false); }};
   const handleDeleteDrug = (id) => { if(window.confirm("¿Eliminar?")) { setData(data.filter(d=>d.id!==id)); setSelectedDrug(null); setView('home'); setIsEditing(false); }};
@@ -1075,6 +1155,10 @@ const App = () => {
   return (
     <>
       <style>{`@media print { @page { size: A4; margin: 0; } body { background: white; } .no-print { display: none !important; } aside, header { display: none !important; } .a4-container { width: 100% !important; height: 100% !important; box-shadow: none !important; margin: 0 !important; } button { display: none !important; } input, textarea { border: none !important; } }`}</style>
+
+      {/* Modal de configuración inicial obligatorio */}
+      <InitialSetupModal isOpen={isAuthenticated && showInitialSetup} onComplete={handleCompleteInitialSetup} user={user}/>
+
       <SettingsModal isOpen={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings}/>
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
       <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...Object.keys(customAreas)])).sort()}/>
@@ -1107,9 +1191,13 @@ const App = () => {
                {Array.from(new Set([...data.map(d=>d.system).filter(Boolean),...Object.keys(customAreas)])).sort().map(sys => {
                   const allDrugsInArea = data.filter(d => d.system === sys && (d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.dci.toLowerCase().includes(searchTerm.toLowerCase())));
                   const subAreas = customAreas[sys]?.subAreas || [];
-                  const drugsWithoutSubArea = allDrugsInArea.filter(d => !d.subArea);
 
-                  if(allDrugsInArea.length === 0 && !customAreas[sys] && searchTerm) return null;
+                  // Solo mostrar medicamentos que estén en patologías
+                  const hasDrugsInPathologies = subAreas.some(subArea =>
+                    allDrugsInArea.some(d => d.subArea === subArea)
+                  );
+
+                  if(!hasDrugsInPathologies && !customAreas[sys] && searchTerm) return null;
                   const isOpen = expandedAreas[sys] || searchTerm;
 
                   return (
@@ -1121,20 +1209,20 @@ const App = () => {
                            </div>
                            {isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
                          </button>
-                         <button onClick={()=>openSubAreaModal(sys)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-indigo-50 rounded text-indigo-400" title="Añadir sub-área">
+                         <button onClick={()=>openSubAreaModal(sys)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-indigo-50 rounded text-indigo-400" title="Añadir patología">
                            <FolderMinus size={14}/>
                          </button>
                        </div>
                        {isOpen && (
                          <div className="pl-6 mt-1 space-y-1">
-                           {/* Medicamentos sin sub-área */}
-                           {drugsWithoutSubArea.map(d=>
-                             <button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-sm text-slate-500 hover:text-indigo-600 py-1">
-                               {d.name}
-                             </button>
+                           {/* Solo mostrar patologías, NO medicamentos sueltos */}
+                           {subAreas.length === 0 && (
+                             <p className="text-xs text-slate-400 italic py-2">
+                               No hay patologías. Crea una patología para añadir fármacos.
+                             </p>
                            )}
 
-                           {/* Sub-áreas */}
+                           {/* Patologías */}
                            {subAreas.map(subArea => {
                              const subAreaDrugs = allDrugsInArea.filter(d => d.subArea === subArea);
                              const subAreaKey = `${sys}-${subArea}`;
@@ -1150,6 +1238,9 @@ const App = () => {
                                  </button>
                                  {isSubAreaOpen && (
                                    <div className="pl-6 mt-1 space-y-1">
+                                     {subAreaDrugs.length === 0 && (
+                                       <p className="text-xs text-slate-300 italic py-1">Sin fármacos</p>
+                                     )}
                                      {subAreaDrugs.map(d=>
                                        <button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-xs text-slate-400 hover:text-indigo-600 py-1">
                                          {d.name}
@@ -1163,10 +1254,6 @@ const App = () => {
                                </div>
                              );
                            })}
-
-                           <button onClick={()=>handleAddNew(sys)} className="text-xs text-indigo-400 flex items-center mt-2 hover:text-indigo-600">
-                             <Plus size={12} className="mr-1"/> Añadir Fármaco
-                           </button>
                          </div>
                        )}
                     </div>
@@ -1183,8 +1270,8 @@ const App = () => {
             <div className="flex-1 overflow-y-auto bg-slate-50">
                {view === 'home' ? (
                  <div className="max-w-6xl mx-auto pt-12 px-8 pb-20">
-                    <h1 className="text-4xl font-extrabold text-slate-900 mb-2">{user?.hospital || 'Hospital'}</h1>
-                    <p className="text-slate-500 mb-10">Panel de Control • {user?.name || 'Usuario'}</p>
+                    <h1 className="text-4xl font-extrabold text-slate-900 mb-2">HOSPITAL {user?.hospital || settings.hospitalName || 'Hospital'}</h1>
+                    <p className="text-slate-500 mb-10">Panel de Control • {user?.name || settings.pharmacistName || 'Usuario'}</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                        <div onClick={() => setShowCreateArea(true)} className="bg-indigo-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:bg-indigo-700 transition-colors flex flex-col justify-between min-h-[160px] relative overflow-hidden group"><div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110"><FolderPlus size={100}/></div><div className="p-3 bg-white/20 w-fit rounded-lg mb-4"><Plus size={24}/></div><div><p className="font-bold text-lg">Nueva Área</p><p className="text-indigo-200 text-sm">Crear carpeta</p></div></div>
                        <div onClick={() => handleOpenLink('https://www.aemps.gob.es/medicamentos-de-uso-humano/')} className="bg-white rounded-xl p-6 border shadow-sm cursor-pointer hover:border-rose-300 hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] group"><div className="flex justify-between items-start"><div className="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-100 transition-colors"><AlertCircle size={24}/></div><ExternalLink size={16} className="text-slate-300"/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg leading-tight">Alertas Seguridad</p><p className="text-slate-500 text-sm mt-1">Web AEMPS Humana</p></div></div>
