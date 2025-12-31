@@ -1545,11 +1545,11 @@ const App = () => {
                   return (
                     <div key={sys} className="mb-1">
                        <div className="flex items-center justify-between group">
-                         <button onClick={()=>setExpandedAreas({...expandedAreas,[sys]:!expandedAreas[sys]})} className="flex items-center justify-between flex-1 px-3 py-2.5 text-left hover:bg-slate-50 rounded">
-                           <div className="flex items-center text-base font-bold text-slate-900">
-                             <FolderPlus size={18} className="mr-2 text-slate-600"/>{sys}
+                         <button onClick={()=>setExpandedAreas({...expandedAreas,[sys]:!expandedAreas[sys]})} className="flex items-center justify-between flex-1 px-2 py-2 text-left hover:bg-slate-50 rounded">
+                           <div className="flex items-center text-sm font-bold text-slate-900">
+                             <FolderPlus size={16} className="mr-2 text-slate-600"/>{sys}
                            </div>
-                           {isOpen?<ChevronDown size={16}/>:<ChevronRight size={16}/>}
+                           {isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
                          </button>
                          <button onClick={()=>openRenameAreaModal(sys)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-50 rounded text-emerald-500" title="Renombrar área">
                            <Edit3 size={14}/>
@@ -1576,14 +1576,14 @@ const App = () => {
                              return (
                                <div key={subArea} className="mt-2">
                                  <div className="flex items-center justify-between group/pathology">
-                                   <button onClick={()=>setExpandedAreas({...expandedAreas,[subAreaKey]:!expandedAreas[subAreaKey]})} className="flex items-center justify-between flex-1 px-2 py-2 text-left hover:bg-slate-100 rounded">
-                                     <div className="flex items-center text-sm font-semibold text-slate-700">
-                                       <FolderMinus size={14} className="mr-2 text-slate-500"/>{subArea}
+                                   <button onClick={()=>setExpandedAreas({...expandedAreas,[subAreaKey]:!expandedAreas[subAreaKey]})} className="flex items-center justify-between flex-1 px-2 py-1 text-left hover:bg-slate-100 rounded">
+                                     <div className="flex items-center text-xs font-semibold text-slate-700">
+                                       <FolderMinus size={12} className="mr-2 text-slate-500"/>{subArea}
                                      </div>
-                                     {isSubAreaOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
+                                     {isSubAreaOpen?<ChevronDown size={12}/>:<ChevronRight size={12}/>}
                                    </button>
                                    <button onClick={()=>openRenamePathologyModal(sys, subArea)} className="opacity-0 group-hover/pathology:opacity-100 transition-opacity p-1 hover:bg-emerald-50 rounded text-emerald-400" title="Renombrar patología">
-                                     <Edit3 size={11}/>
+                                     <Edit3 size={10}/>
                                    </button>
                                  </div>
                                  {isSubAreaOpen && (
@@ -1592,12 +1592,12 @@ const App = () => {
                                        <p className="text-xs text-slate-300 italic py-1">Sin fármacos</p>
                                      )}
                                      {subAreaDrugs.map(d=>
-                                       <button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-sm text-slate-600 hover:text-indigo-600 py-1.5 px-1">
+                                       <button key={d.id} onClick={()=>{setSelectedDrug(d);setView('detail');setActiveTab('pro');setIsEditing(false)}} className="block w-full text-left text-xs text-slate-600 hover:text-indigo-600 py-1">
                                          {d.name}
                                        </button>
                                      )}
-                                     <button onClick={()=>handleAddNew(sys, subArea)} className="text-sm text-indigo-500 flex items-center mt-1 hover:text-indigo-600 font-medium">
-                                       <Plus size={12} className="mr-1"/> Añadir Fármaco
+                                     <button onClick={()=>handleAddNew(sys, subArea)} className="text-xs text-indigo-500 flex items-center mt-1 hover:text-indigo-600">
+                                       <Plus size={10} className="mr-1"/> Añadir Fármaco
                                      </button>
                                    </div>
                                  )}
