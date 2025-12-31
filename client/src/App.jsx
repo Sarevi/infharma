@@ -1270,7 +1270,7 @@ const App = () => {
                         n[i] = typeof n[i] === 'string' ? v : { ...n[i], content: v };
                         updateItems(n);
                       }}
-                      className={`font-medium w-full ${isCheckbox ? 'text-slate-600' : 'text-slate-700 bg-slate-50 p-2 rounded border-l-2 border-indigo-300'}`}
+                      className={`font-medium w-full ${isCheckbox ? 'text-slate-600' : 'text-slate-700'}`}
                     />
                     {isEditing && (
                       <div className="flex gap-1 ml-2">
@@ -1373,7 +1373,7 @@ const App = () => {
                         n[i] = typeof n[i] === 'string' ? v : { ...n[i], content: v };
                         updateItems(n);
                       }}
-                      className={`font-medium w-full ${isCheckbox ? 'text-slate-600' : 'text-slate-700 bg-slate-50 p-2 rounded border-l-2 border-indigo-300'}`}
+                      className={`font-medium w-full ${isCheckbox ? 'text-slate-600' : 'text-slate-700'}`}
                     />
                     {isEditing && (
                       <div className="flex gap-1 ml-2">
