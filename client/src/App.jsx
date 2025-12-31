@@ -875,7 +875,7 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
          <div className={`${isDanger ? 'bg-rose-50 border-rose-500 text-rose-900' : 'bg-amber-50 border-amber-500 text-amber-900'} border-l-4 p-4 rounded-r-md flex gap-3`}>
             <AlertTriangle size={20} className="mt-0.5 flex-shrink-0"/>
             <div className="w-full">
-               {isEditing ? <EditableText value={section.title} onChange={(v) => updateContent('title', v)} className="font-bold bg-transparent border-b border-rose-200 w-full outline-none mb-1"/> : <h3 className="font-bold uppercase tracking-wide mb-1" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
+               {isEditing ? <EditableText value={section.title} onChange={(v) => updateContent('title', v)} className="font-bold w-full mb-1"/> : <h3 className="font-bold uppercase tracking-wide mb-1" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
                <div className="text-sm leading-relaxed font-medium">{children}</div>
             </div>
          </div>
