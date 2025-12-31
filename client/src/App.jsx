@@ -466,7 +466,7 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
         ref={contentEditableRef}
         contentEditable={true}
         suppressContentEditableWarning={true}
-        className={`w-full p-1 border-b border-dashed border-indigo-300 bg-transparent outline-none focus:border-indigo-500 transition-colors min-h-[1.5em] ${className}`}
+        className={`w-full p-2 border-b-2 border-indigo-300 bg-indigo-50/50 outline-none focus:border-indigo-500 focus:bg-indigo-100/50 transition-colors min-h-[1.5em] rounded-t ${className}`}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
         onFocus={() => setIsFocused(true)}
         onBlur={(e) => { setIsFocused(false); onChange(e.currentTarget.innerHTML); }}
@@ -887,7 +887,14 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
       {isEditing && <button onClick={onRemove} className="absolute -left-8 top-0 p-1.5 text-slate-300 hover:text-rose-500"><Trash2 size={14} /></button>}
       <div className="flex items-center mb-3 border-b border-slate-100 pb-2">
          {isEditing ? (
-          <div className="flex items-center w-full"><FileText size={24} className="text-slate-400 mr-2"/><EditableText value={section.title} onChange={(v) => updateContent('title', v)} className="text-2xl font-bold text-slate-800 bg-transparent outline-none w-full"/></div>
+          <div className="flex items-center w-full">
+            <FileText size={24} className="text-slate-400 mr-2"/>
+            <EditableText
+              value={section.title}
+              onChange={(v) => updateContent('title', v)}
+              className="text-2xl font-bold text-slate-800 w-full"
+            />
+          </div>
         ) : <h3 className="text-2xl font-bold text-slate-800 flex items-center tracking-tight" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
       </div>
       <div className="text-slate-700 text-sm leading-relaxed pl-1">{children}</div>
