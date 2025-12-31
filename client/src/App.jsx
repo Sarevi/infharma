@@ -220,6 +220,49 @@ const CreateSubAreaModal = ({ isOpen, onClose, onConfirm, areaName }) => {
   );
 };
 
+const RenameModal = ({ isOpen, onClose, onConfirm, currentName, type }) => {
+  const [newName, setNewName] = useState(currentName);
+
+  useEffect(() => {
+    setNewName(currentName);
+  }, [currentName, isOpen]);
+
+  if(!isOpen) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if(newName.trim() && newName.trim() !== currentName) {
+      onConfirm(newName.trim());
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm animate-in fade-in">
+       <div className="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full mx-4">
+          <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+            <Edit3 size={20} className="text-indigo-600"/>
+            Renombrar {type === 'area' ? 'Área Clínica' : 'Patología'}
+          </h3>
+          <form onSubmit={handleSubmit}>
+             <input
+               autoFocus
+               type="text"
+               className="w-full p-3 border border-slate-300 rounded-lg mb-4"
+               placeholder={type === 'area' ? 'Nombre del área' : 'Nombre de la patología'}
+               value={newName}
+               onChange={e => setNewName(e.target.value)}
+             />
+             <div className="flex justify-end gap-3">
+                <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg">Cancelar</button>
+                <button type="submit" disabled={!newName.trim() || newName.trim() === currentName} className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold disabled:bg-slate-300 disabled:cursor-not-allowed">Renombrar</button>
+             </div>
+          </form>
+       </div>
+    </div>
+  );
+};
+
 const CopyTemplateModal = ({ isOpen, onClose, onConfirm, drugs, mode }) => {
   const [selectedDrug, setSelectedDrug] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -1021,6 +1064,8 @@ const App = () => {
     const hasCompletedSetup = localStorage.getItem('infharma_setup_completed');
     return !hasCompletedSetup;
   });
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameData, setRenameData] = useState({ type: 'area', currentName: '', areaName: '', pathologyName: '' });
 
   useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
@@ -1104,6 +1149,48 @@ const App = () => {
     setSelectedAreaForSubArea(areaName);
     setShowCreateSubArea(true);
   };
+
+  const openRenameAreaModal = (areaName) => {
+    setRenameData({ type: 'area', currentName: areaName, areaName: '', pathologyName: '' });
+    setShowRenameModal(true);
+  };
+
+  const openRenamePathologyModal = (areaName, pathologyName) => {
+    setRenameData({ type: 'pathology', currentName: pathologyName, areaName, pathologyName });
+    setShowRenameModal(true);
+  };
+
+  const handleRenameArea = (newName) => {
+    const oldName = renameData.currentName;
+    if (oldName === newName) return;
+
+    // Actualizar customAreas
+    const newCustomAreas = { ...customAreas };
+    if (newCustomAreas[oldName]) {
+      newCustomAreas[newName] = newCustomAreas[oldName];
+      delete newCustomAreas[oldName];
+    }
+    setCustomAreas(newCustomAreas);
+
+    // Actualizar todos los medicamentos que tengan este sistema
+    setData(data.map(d => d.system === oldName ? { ...d, system: newName } : d));
+  };
+
+  const handleRenamePathology = (newName) => {
+    const { areaName, currentName: oldName } = renameData;
+    if (oldName === newName) return;
+
+    // Actualizar la patología en customAreas
+    const newCustomAreas = { ...customAreas };
+    if (newCustomAreas[areaName] && newCustomAreas[areaName].subAreas) {
+      const subAreas = newCustomAreas[areaName].subAreas.map(sa => sa === oldName ? newName : sa);
+      newCustomAreas[areaName] = { ...newCustomAreas[areaName], subAreas };
+      setCustomAreas(newCustomAreas);
+    }
+
+    // Actualizar todos los medicamentos que tengan esta patología
+    setData(data.map(d => (d.system === areaName && d.subArea === oldName) ? { ...d, subArea: newName } : d));
+  };
   const getOutdatedDrugs = () => { const parseDate = (str) => { if(!str) return new Date(0); const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); }; return [...data].sort((a,b) => parseDate(a.updatedAt) - parseDate(b.updatedAt)).slice(0, 2); };
   const outdatedDrugs = getOutdatedDrugs();
   const handleOpenLink = (url) => window.open(url, '_blank', 'noopener,noreferrer');
@@ -1163,6 +1250,13 @@ const App = () => {
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
       <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...Object.keys(customAreas)])).sort()}/>
       <CreateSubAreaModal isOpen={showCreateSubArea} onClose={()=>setShowCreateSubArea(false)} onConfirm={handleCreateSubArea} areaName={selectedAreaForSubArea}/>
+      <RenameModal
+        isOpen={showRenameModal}
+        onClose={()=>setShowRenameModal(false)}
+        onConfirm={renameData.type === 'area' ? handleRenameArea : handleRenamePathology}
+        currentName={renameData.currentName}
+        type={renameData.type}
+      />
       <CopyTemplateModal isOpen={showCopyTemplateModal} onClose={()=>setShowCopyTemplateModal(false)} onConfirm={handleCopyTemplate} drugs={data} mode={templateMode}/>
 
       {!isAuthenticated ? <LoginPage /> : (
@@ -1209,6 +1303,9 @@ const App = () => {
                            </div>
                            {isOpen?<ChevronDown size={14}/>:<ChevronRight size={14}/>}
                          </button>
+                         <button onClick={()=>openRenameAreaModal(sys)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-emerald-50 rounded text-emerald-500" title="Renombrar área">
+                           <Edit3 size={14}/>
+                         </button>
                          <button onClick={()=>openSubAreaModal(sys)} className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-indigo-50 rounded text-indigo-400" title="Añadir patología">
                            <FolderMinus size={14}/>
                          </button>
@@ -1230,12 +1327,17 @@ const App = () => {
 
                              return (
                                <div key={subArea} className="mt-2">
-                                 <button onClick={()=>setExpandedAreas({...expandedAreas,[subAreaKey]:!expandedAreas[subAreaKey]})} className="flex items-center justify-between w-full px-2 py-1 text-left hover:bg-slate-100 rounded">
-                                   <div className="flex items-center text-xs font-semibold text-slate-500">
-                                     <FolderMinus size={12} className="mr-2 text-slate-300"/>{subArea}
-                                   </div>
-                                   {isSubAreaOpen?<ChevronDown size={12}/>:<ChevronRight size={12}/>}
-                                 </button>
+                                 <div className="flex items-center justify-between group/pathology">
+                                   <button onClick={()=>setExpandedAreas({...expandedAreas,[subAreaKey]:!expandedAreas[subAreaKey]})} className="flex items-center justify-between flex-1 px-2 py-1 text-left hover:bg-slate-100 rounded">
+                                     <div className="flex items-center text-xs font-semibold text-slate-500">
+                                       <FolderMinus size={12} className="mr-2 text-slate-300"/>{subArea}
+                                     </div>
+                                     {isSubAreaOpen?<ChevronDown size={12}/>:<ChevronRight size={12}/>}
+                                   </button>
+                                   <button onClick={()=>openRenamePathologyModal(sys, subArea)} className="opacity-0 group-hover/pathology:opacity-100 transition-opacity p-1 hover:bg-emerald-50 rounded text-emerald-400" title="Renombrar patología">
+                                     <Edit3 size={10}/>
+                                   </button>
+                                 </div>
                                  {isSubAreaOpen && (
                                    <div className="pl-6 mt-1 space-y-1">
                                      {subAreaDrugs.length === 0 && (
