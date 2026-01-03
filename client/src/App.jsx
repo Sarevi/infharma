@@ -1080,7 +1080,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
 
 // --- APP ---
 const App = () => {
-  const { isAuthenticated, user, logout: authLogout } = useAuth();
+  const { isAuthenticated, user, logout: authLogout, updateProfile } = useAuth();
   const { totalUnreadCount, pendingRequests } = useChat(); 
   const [view, setView] = useState('home'); 
   const [selectedDrug, setSelectedDrug] = useState(null);
@@ -1112,13 +1112,26 @@ const App = () => {
   const [templateMode, setTemplateMode] = useState('pro');
   const [pendingNewDrugSystem, setPendingNewDrugSystem] = useState('');
   const [pendingSubArea, setPendingSubArea] = useState('');
-  const [showInitialSetup, setShowInitialSetup] = useState(() => {
-    // Mostrar setup inicial si el usuario no tiene configuración guardada
-    const hasCompletedSetup = localStorage.getItem('infharma_setup_completed');
-    return !hasCompletedSetup;
-  });
+  const [showInitialSetup, setShowInitialSetup] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameData, setRenameData] = useState({ type: 'area', currentName: '', areaName: '', pathologyName: '' });
+
+  // Check if user needs to complete initial setup
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Mostrar setup inicial si el usuario no tiene hospital configurado
+      setShowInitialSetup(!user.hospital);
+
+      // Sincronizar settings con datos del usuario desde la base de datos
+      if (user.hospital || user.name) {
+        setSettings(prevSettings => ({
+          ...prevSettings,
+          hospitalName: user.hospital || prevSettings.hospitalName,
+          pharmacistName: user.name || prevSettings.pharmacistName,
+        }));
+      }
+    }
+  }, [isAuthenticated, user]);
 
   // Load drugs from API when authenticated
   useEffect(() => {
@@ -1146,10 +1159,21 @@ const App = () => {
 
   const handleLogout = () => { authLogout(); setView('home'); setIsEditing(false); };
   const handleSaveSettings = (newSettings) => { setSettings(newSettings); };
-  const handleCompleteInitialSetup = (setupData) => {
-    setSettings({ ...settings, hospitalName: setupData.hospitalName, pharmacistName: setupData.pharmacistName });
-    localStorage.setItem('infharma_setup_completed', 'true');
-    setShowInitialSetup(false);
+  const handleCompleteInitialSetup = async (setupData) => {
+    // Actualizar perfil del usuario en la base de datos
+    const result = await updateProfile({
+      name: setupData.pharmacistName,
+      hospital: setupData.hospitalName
+    });
+
+    if (result.success) {
+      // También guardar en settings locales para la aplicación
+      setSettings({ ...settings, hospitalName: setupData.hospitalName, pharmacistName: setupData.pharmacistName });
+      setShowInitialSetup(false);
+    } else {
+      console.error('Error updating profile:', result.message);
+      alert('Error al guardar la configuración: ' + result.message);
+    }
   };
   const handleSaveDrug = async (d) => {
     try {

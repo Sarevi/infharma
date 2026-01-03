@@ -214,6 +214,44 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
+// Update user profile
+export const updateProfile = async (req, res) => {
+  try {
+    const { name, hospital, specialty } = req.body;
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Usuario no encontrado',
+      });
+    }
+
+    // Update only provided fields
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (hospital !== undefined) updates.hospital = hospital;
+    if (specialty !== undefined) updates.specialty = specialty;
+
+    await user.update(updates);
+
+    res.json({
+      success: true,
+      message: 'Perfil actualizado correctamente',
+      data: {
+        user: user.getPublicProfile(),
+      },
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al actualizar perfil',
+      error: error.message,
+    });
+  }
+};
+
 // Verify email with token
 export const verifyEmail = async (req, res) => {
   try {
@@ -359,6 +397,7 @@ export default {
   refreshToken,
   logout,
   getCurrentUser,
+  updateProfile,
   verifyEmail,
   resendVerification,
 };
