@@ -6,6 +6,11 @@ import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Import database
 import sequelize, { testConnection, syncDatabase } from './config/database.js';
@@ -104,7 +109,18 @@ app.use('/api/contacts', contactRoutes);
 app.use('/api/drugs', drugRoutes);
 app.use('/api/settings', settingsRoutes);
 
-// Error handling
+// Serve static files from React app in production
+if (process.env.NODE_ENV === 'production') {
+  const clientBuildPath = path.join(__dirname, '../../client/dist');
+  app.use(express.static(clientBuildPath));
+
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
+
+// Error handling (only for API routes in production)
 app.use(notFound);
 app.use(errorHandler);
 
