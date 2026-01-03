@@ -26,7 +26,7 @@ import {
   Bold, Italic, Underline, Wind,
 
   // ESTADÍSTICAS Y GRÁFICAS
-  BarChart3, History
+  BarChart3, History, Image, Table
 } from 'lucide-react';
 import ChatLayout from './components/Chat/ChatLayout';
 import { useAuth } from './context/AuthContext';
@@ -468,9 +468,17 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
         suppressContentEditableWarning={true}
         className={`w-full p-2 border-b-2 border-indigo-300 bg-indigo-50/50 outline-none focus:border-indigo-500 focus:bg-indigo-100/50 transition-colors min-h-[1.5em] rounded-t cursor-text ${className}`}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
+        onKeyDown={(e) => {
+          // Interceptar Enter para usar <br> en lugar de <div>
+          if (e.key === 'Enter' && multiline) {
+            e.preventDefault();
+            document.execCommand('insertLineBreak');
+            onChange(e.currentTarget.innerHTML);
+          }
+        }}
         onFocus={() => setIsFocused(true)}
         onBlur={(e) => { setIsFocused(false); onChange(e.currentTarget.innerHTML); }}
-        style={{ minHeight: multiline ? '1.5em' : 'auto', display: multiline ? 'block' : 'inline-block', width: '100%' }}
+        style={{ minHeight: multiline ? '1.5em' : 'auto', display: multiline ? 'block' : 'inline-block', width: '100%', lineHeight: '1.6' }}
         onClick={(e) => {
           e.currentTarget.focus();
         }}
@@ -1019,7 +1027,35 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
         case 'conservation': return <div className={`${theme.bg} rounded-xl p-5 border ${theme.border} h-full overflow-auto break-words`}>{commonHeader('conservation')}<div className="space-y-2">{drug.patientSections.conservation.map((item,i)=><div key={i} className="flex gap-2"><div className={`w-1 h-1 rounded-full mt-1.5 ${theme.accent}`}></div><EditableText value={item} isEditing={isEditing} multiline onChange={v=>updateArray('conservation',i,v)} className={`text-xs ${theme.text} break-words`}/></div>)}</div></div>;
         case 'tips': return <div className={`${theme.bg} rounded-xl p-5 border ${theme.border} h-full overflow-auto break-words`}>{commonHeader('tips')}<div className="space-y-2">{drug.patientSections.precautions.map((item,i)=><div key={i} className="flex gap-2"><div className="w-1 h-1 rounded-full mt-1.5 bg-slate-400"></div><EditableText value={item} isEditing={isEditing} multiline onChange={v=>updateArray('precautions',i,v)} className="text-xs text-slate-600 break-words"/></div>)}</div></div>;
         case 'sideEffects': return <div className="grid grid-cols-3 gap-4 h-full"><div className="border-t-4 border-emerald-400 bg-white pt-3">{commonHeader('normal')}<div className="text-[10px] text-slate-500 space-y-1">{drug.patientSections.sideEffects.filter(s=>!s.includes('🟡')).map((s,i)=><EditableText key={i} value={s.replace('🟢','')} isEditing={isEditing} multiline onChange={()=>{}}/>)}</div></div><div className="border-t-4 border-amber-400 bg-white pt-3">{commonHeader('consult')}<div className="text-[10px] text-slate-500 space-y-1">{drug.patientSections.sideEffects.filter(s=>s.includes('🟡')).map((s,i)=><EditableText key={i} value={s.replace('🟡','')} isEditing={isEditing} multiline onChange={()=>{}}/>)}</div></div><div className="border-t-4 border-rose-500 bg-rose-50 pt-3 px-2">{commonHeader('urgency')}<div className="text-[10px] text-rose-800 font-bold space-y-1">{drug.patientSections.alarms.map((s,i)=><div key={i} className="flex"><span className="mr-1">•</span><EditableText value={s} isEditing={isEditing} multiline onChange={v=>updateArray('alarms',i,v)}/></div>)}</div></div></div>;
-        case 'custom': const c = customCards.find(x=>x.id===item.id)||{title:'',content:''}; return <div className={`${theme.bg} rounded-xl p-4 border ${theme.border} h-full overflow-auto break-words`}>{isEditing?<input value={c.title} onChange={v=>updatePat('customCards',customCards.map(z=>z.id===item.id?{...z,title:v.target.value}:z))} className="font-bold bg-transparent outline-none w-full mb-2" placeholder="Título"/>:<h4 className="font-bold text-xs uppercase mb-2 break-words">{c.title}</h4>}<EditableText value={c.content} isEditing={isEditing} multiline onChange={v=>updatePat('customCards',customCards.map(z=>z.id===item.id?{...z,content:v}:z))} className="text-xs break-words"/></div>;
+        case 'custom':
+          const c = customCards.find(x=>x.id===item.id)||{title:'',content:''};
+          const updateCustomCard = (field, value) => {
+            const newCards = customCards.map(card =>
+              card.id === item.id ? {...card, [field]: value} : card
+            );
+            updatePat('customCards', newCards);
+          };
+          return (
+            <div className={`${theme.bg} rounded-xl p-4 border ${theme.border} h-full overflow-auto break-words`}>
+              {isEditing ? (
+                <input
+                  value={c.title}
+                  onChange={e => updateCustomCard('title', e.target.value)}
+                  className="font-bold bg-transparent border-b-2 border-indigo-300 outline-none w-full mb-2 p-1"
+                  placeholder="Título de la tarjeta"
+                />
+              ) : (
+                <h4 className="font-bold text-xs uppercase mb-2 break-words">{c.title}</h4>
+              )}
+              <EditableText
+                value={c.content}
+                isEditing={isEditing}
+                multiline
+                onChange={v => updateCustomCard('content', v)}
+                className="text-xs break-words"
+              />
+            </div>
+          );
         default: return null;
       }
   };
@@ -1342,6 +1378,169 @@ const App = () => {
         const handleToggleColor = (idx) => { const n = [...section.data]; n[idx].color = n[idx].color === 'indigo' ? 'emerald' : 'indigo'; updateData(n); };
         return (
            <div className="mt-8 mb-10 w-full"><div className="flex w-full items-end justify-between gap-2 border-b border-slate-200 pb-1 min-h-[220px]">{section.data.map((item, idx) => { const isIndigo = item.color === 'indigo'; return (<div key={idx} className="flex flex-col items-center justify-end relative group flex-1">{isEditing && (<div className="absolute -top-10 flex flex-col gap-1 items-center bg-white shadow-md border rounded p-1 z-20 opacity-0 group-hover:opacity-100 transition-opacity"><div className="flex gap-1"><button onClick={() => handleBarResize(idx, 10)} className="hover:bg-slate-100 p-0.5 rounded"><ChevronDown className="rotate-180" size={12}/></button><button onClick={() => handleBarResize(idx, -10)} className="hover:bg-slate-100 p-0.5 rounded"><ChevronDown size={12}/></button></div><div className="flex gap-1 border-t pt-1"><button onClick={() => handleToggleColor(idx)} className={`w-3 h-3 rounded-full ${isIndigo ? 'bg-emerald-500' : 'bg-indigo-500'}`} title="Cambiar Color"></button><button onClick={() => handleRemoveStep(idx)} className="text-rose-500 hover:bg-rose-50 p-0.5 rounded"><Trash2 size={12}/></button></div></div>)}<div className={`mb-3 font-bold text-xl ${isIndigo?'text-indigo-700':'text-emerald-700'}`}><EditableText value={item.dose} isEditing={isEditing} onChange={v=>{const n=[...section.data];n[idx].dose=v;updateData(n)}} className="text-center min-w-[30px]"/></div><div className={`w-full max-w-[80px] rounded-t-lg shadow-lg ${isIndigo?'bg-gradient-to-t from-indigo-600 to-indigo-400':'bg-gradient-to-t from-emerald-600 to-emerald-400'}`} style={{ height: `${item.height*2}px` }}></div><div className="mt-3 flex flex-col items-center w-full"><div className="bg-slate-50 px-2 py-1 rounded-full border text-[10px] font-bold text-slate-500 uppercase w-full max-w-[80px] text-center overflow-hidden"><EditableText value={item.week} isEditing={isEditing} onChange={v=>{const n=[...section.data];n[idx].week=v;updateData(n)}} className="text-center w-full"/></div><div className={`mt-1 text-[10px] font-black uppercase text-center ${isIndigo?'text-indigo-500':'text-emerald-600'}`}><EditableText value={item.label} isEditing={isEditing} onChange={v=>{const n=[...section.data];n[idx].label=v;updateData(n)}} className="text-center w-full"/></div><div className="text-[9px] text-slate-400 font-medium text-center"><EditableText value={item.subtext} isEditing={isEditing} onChange={v=>{const n=[...section.data];n[idx].subtext=v;updateData(n)}} className="text-center w-full"/></div></div></div>)})} {isEditing && <div className="flex flex-col justify-end"><button onClick={handleAddStep} className="h-40 w-12 border-2 border-dashed border-slate-300 rounded-lg flex items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 hover:bg-indigo-50 transition-colors ml-4"><Plus/></button></div>}</div></div>
+        );
+      }
+      if (section.type === 'image') {
+        const updateField = (field, value) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,[field]:value}:s)});
+        return (
+          <div className="my-8 w-full">
+            <div className="border-2 border-dashed border-purple-300 rounded-lg p-6 bg-purple-50/30">
+              {isEditing ? (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-bold text-purple-700 mb-2">URL de la Imagen</label>
+                    <input
+                      type="text"
+                      value={section.imageUrl || ''}
+                      onChange={e => updateField('imageUrl', e.target.value)}
+                      placeholder="https://ejemplo.com/imagen.jpg"
+                      className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-purple-700 mb-2">Pie de Imagen (opcional)</label>
+                    <input
+                      type="text"
+                      value={section.caption || ''}
+                      onChange={e => updateField('caption', e.target.value)}
+                      placeholder="Descripción de la imagen..."
+                      className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                </div>
+              ) : null}
+              {section.imageUrl && (
+                <div className="mt-4">
+                  <img
+                    src={section.imageUrl}
+                    alt={section.caption || 'Imagen de posología'}
+                    className="max-w-full h-auto rounded-lg shadow-md mx-auto"
+                    style={{ maxHeight: '400px' }}
+                  />
+                  {section.caption && (
+                    <p className="text-center text-sm text-slate-600 italic mt-3">{section.caption}</p>
+                  )}
+                </div>
+              )}
+              {!section.imageUrl && !isEditing && (
+                <div className="text-center text-slate-400 py-8">
+                  <Image size={48} className="mx-auto mb-2 opacity-30"/>
+                  <p className="text-sm">No hay imagen configurada</p>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      }
+      if (section.type === 'table') {
+        const updateHeaders = (newHeaders) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,headers:newHeaders}:s)});
+        const updateRows = (newRows) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,rows:newRows}:s)});
+        const addRow = () => updateRows([...section.rows, Array(section.headers.length).fill('')]);
+        const removeRow = (idx) => { const n = [...section.rows]; n.splice(idx, 1); updateRows(n); };
+        const addColumn = () => {
+          updateHeaders([...section.headers, 'Nueva Columna']);
+          updateRows(section.rows.map(row => [...row, '']));
+        };
+        const removeColumn = (colIdx) => {
+          if (section.headers.length <= 1) return; // Mantener al menos 1 columna
+          const newHeaders = section.headers.filter((_, i) => i !== colIdx);
+          const newRows = section.rows.map(row => row.filter((_, i) => i !== colIdx));
+          updateHeaders(newHeaders);
+          updateRows(newRows);
+        };
+        return (
+          <div className="my-8 w-full overflow-x-auto">
+            <div className="border-2 border-teal-300 rounded-lg overflow-hidden bg-teal-50/20">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-teal-100 border-b-2 border-teal-300">
+                    {section.headers.map((header, colIdx) => (
+                      <th key={colIdx} className="text-left p-3 font-bold text-teal-900 relative group">
+                        {isEditing ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="text"
+                              value={header}
+                              onChange={e => {
+                                const newHeaders = [...section.headers];
+                                newHeaders[colIdx] = e.target.value;
+                                updateHeaders(newHeaders);
+                              }}
+                              className="w-full bg-white border border-teal-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                            />
+                            <button
+                              onClick={() => removeColumn(colIdx)}
+                              className="text-teal-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              title="Eliminar columna"
+                            >
+                              <X size={14}/>
+                            </button>
+                          </div>
+                        ) : (
+                          header
+                        )}
+                      </th>
+                    ))}
+                    {isEditing && (
+                      <th className="w-10 bg-teal-100">
+                        <button
+                          onClick={addColumn}
+                          className="text-teal-600 hover:text-teal-800 p-1"
+                          title="Añadir columna"
+                        >
+                          <Plus size={16}/>
+                        </button>
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-teal-200">
+                  {section.rows.map((row, rowIdx) => (
+                    <tr key={rowIdx} className="hover:bg-teal-50/50 group">
+                      {row.map((cell, cellIdx) => (
+                        <td key={cellIdx} className="p-3">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={cell}
+                              onChange={e => {
+                                const newRows = [...section.rows];
+                                newRows[rowIdx][cellIdx] = e.target.value;
+                                updateRows(newRows);
+                              }}
+                              className="w-full bg-white border border-teal-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                            />
+                          ) : (
+                            <span className="text-slate-700">{cell}</span>
+                          )}
+                        </td>
+                      ))}
+                      {isEditing && (
+                        <td className="p-3 text-center">
+                          <button
+                            onClick={() => removeRow(rowIdx)}
+                            className="text-teal-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 size={14}/>
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {isEditing && (
+                <div className="p-2 bg-teal-100/30 text-center border-t border-teal-200">
+                  <button
+                    onClick={addRow}
+                    className="text-xs font-bold text-teal-600 hover:text-teal-800 px-4 py-2 rounded hover:bg-teal-100"
+                  >
+                    + Añadir Fila
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         );
       }
       if (section.type === 'checklist') {
@@ -1793,7 +1992,7 @@ const App = () => {
                        <div id="pdf-content" className="bg-white shadow-lg mx-auto p-12 min-h-[297mm] max-w-[210mm]">
                           <div className="flex justify-between items-end border-b pb-6 mb-8"><div><h2 className="text-2xl font-black uppercase">Protocolo Clínico</h2><div className="flex items-center gap-2 text-sm text-slate-500 mt-1"><Activity size={16} className="text-indigo-500"/> Farmacia Hospitalaria</div></div><div className="text-right"><p className="text-xs font-bold text-slate-400 uppercase">Revisión</p><p className="font-mono text-sm">{formatDate(selectedDrug.updatedAt)}</p></div></div>
                           <div>{selectedDrug.proSections.map(section => (<ProSection key={section.id} section={section} isEditing={isEditing} updateContent={(f,v)=>setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,[f]:v}:s)})} onRemove={()=>{if(window.confirm("Borrar sección?")) setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.filter(s=>s.id!==section.id)})}}>{renderProContent(section)}</ProSection>))}</div>
-                          {isEditing && (<div className="mt-12 pt-6 border-t border-dashed text-center flex gap-3 justify-center no-print"><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Nueva Sección', type: 'text', content: 'Escriba aquí el contenido del protocolo...' }]})} className="px-6 py-3 bg-indigo-50 text-indigo-700 rounded-full font-bold text-sm hover:bg-indigo-100 flex items-center"><Plus size={16} className="mr-2"/> Texto Libre</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Ajuste Renal/Hepático', type: 'adjustments', items: [{label: 'Criterio', action: 'Acción'}] }]})} className="px-6 py-3 bg-amber-100 text-amber-700 rounded-full font-bold text-sm hover:bg-amber-200 flex items-center border border-amber-300"><AlertTriangle size={16} className="mr-2"/> Ajustes Dosis</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Gráfica Posología', type: 'timeline', data: [{ week: 'S0', dose: 100, label: 'Inicio', subtext: '', color: 'indigo', height: 100 }] }]})} className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-full font-bold text-sm hover:bg-emerald-100 flex items-center"><BarChart3 size={16} className="mr-2"/> Gráfica</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Checklist', type: 'checklist', items: ['Requisito 1'] }]})} className="px-6 py-3 bg-sky-50 text-sky-700 rounded-full font-bold text-sm hover:bg-sky-100 flex items-center"><CheckCircle size={16} className="mr-2"/> Checklist</button></div>)}
+                          {isEditing && (<div className="mt-12 pt-6 border-t border-dashed text-center flex gap-3 justify-center flex-wrap no-print"><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Nueva Sección', type: 'text', content: 'Escriba aquí el contenido del protocolo...' }]})} className="px-6 py-3 bg-indigo-50 text-indigo-700 rounded-full font-bold text-sm hover:bg-indigo-100 flex items-center"><Plus size={16} className="mr-2"/> Texto Libre</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Ajuste Renal/Hepático', type: 'adjustments', items: [{label: 'Criterio', action: 'Acción'}] }]})} className="px-6 py-3 bg-amber-100 text-amber-700 rounded-full font-bold text-sm hover:bg-amber-200 flex items-center border border-amber-300"><AlertTriangle size={16} className="mr-2"/> Ajustes Dosis</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Gráfica Posología', type: 'timeline', data: [{ week: 'S0', dose: 100, label: 'Inicio', subtext: '', color: 'indigo', height: 100 }] }]})} className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-full font-bold text-sm hover:bg-emerald-100 flex items-center"><BarChart3 size={16} className="mr-2"/> Gráfica</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Imagen Posología', type: 'image', imageUrl: '', caption: '' }]})} className="px-6 py-3 bg-purple-50 text-purple-700 rounded-full font-bold text-sm hover:bg-purple-100 flex items-center"><Image size={16} className="mr-2"/> Imagen</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Tabla Posología', type: 'table', headers: ['Semana', 'Dosis'], rows: [['S0', '100mg']] }]})} className="px-6 py-3 bg-teal-50 text-teal-700 rounded-full font-bold text-sm hover:bg-teal-100 flex items-center"><Table size={16} className="mr-2"/> Tabla</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Checklist', type: 'checklist', items: ['Requisito 1'] }]})} className="px-6 py-3 bg-sky-50 text-sky-700 rounded-full font-bold text-sm hover:bg-sky-100 flex items-center"><CheckCircle size={16} className="mr-2"/> Checklist</button></div>)}
                        </div>
                     ) : <PatientInfographic drug={selectedDrug} isEditing={isEditing} updateDrug={setSelectedDrug} settings={settings}/>}
                  </div>
