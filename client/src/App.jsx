@@ -31,6 +31,7 @@ import {
 import ChatLayout from './components/Chat/ChatLayout';
 import { useAuth } from './context/AuthContext';
 import { useChat } from './context/ChatContext';
+import * as drugsAPI from './api/drugs';
 
 // --- MAPA DE ICONOS ---
 const ICON_MAP = {

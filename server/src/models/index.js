@@ -3,6 +3,19 @@ import Conversation from './Conversation.js';
 import ConversationParticipant from './ConversationParticipant.js';
 import Message from './Message.js';
 import ContactRequest from './ContactRequest.js';
+import Drug from './Drug.js';
+
+// User <-> Drug (One to Many)
+User.hasMany(Drug, {
+  foreignKey: 'userId',
+  as: 'drugs',
+  onDelete: 'CASCADE',
+});
+
+Drug.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'owner',
+});
 
 // User <-> Conversation (Many to Many through ConversationParticipant)
 User.belongsToMany(Conversation, {
@@ -108,4 +121,4 @@ User.hasMany(ContactRequest, {
   as: 'receivedContactRequests',
 });
 
-export { User, Conversation, ConversationParticipant, Message, ContactRequest };
+export { User, Conversation, ConversationParticipant, Message, ContactRequest, Drug };
