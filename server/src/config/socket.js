@@ -7,9 +7,17 @@ dotenv.config();
 let io;
 
 export const initializeSocket = (httpServer) => {
+  const allowedOrigins = [
+    process.env.CLIENT_URL,
+    'https://infharma.com',
+    'https://www.infharma.com',
+    'http://localhost:5173',
+    'http://localhost:5174'
+  ].filter(Boolean);
+
   io = new Server(httpServer, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:5173',
+      origin: allowedOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },
