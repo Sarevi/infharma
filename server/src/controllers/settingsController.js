@@ -64,7 +64,11 @@ export const updateSettings = async (req, res) => {
     } else {
       // Update only provided fields
       const updates = {};
-      if (customAreas !== undefined) updates.customAreas = customAreas;
+      if (customAreas !== undefined) {
+        updates.customAreas = customAreas;
+        // Force Sequelize to recognize JSONB field change
+        settings.changed('customAreas', true);
+      }
       if (logoUrl !== undefined) updates.logoUrl = logoUrl;
       if (primaryColor !== undefined) updates.primaryColor = primaryColor;
 
