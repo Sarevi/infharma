@@ -32,6 +32,7 @@ import ChatLayout from './components/Chat/ChatLayout';
 import { useAuth } from './context/AuthContext';
 import { useChat } from './context/ChatContext';
 import * as drugsAPI from './api/drugs';
+import * as settingsAPI from './api/settings';
 
 // --- MAPA DE ICONOS ---
 const ICON_MAP = {
@@ -1091,19 +1092,11 @@ const App = () => {
   const [showCreateArea, setShowCreateArea] = useState(false);
   const [showCreateSubArea, setShowCreateSubArea] = useState(false);
   const [selectedAreaForSubArea, setSelectedAreaForSubArea] = useState('');
-  const [customAreas, setCustomAreas] = useState(() => {
-    const saved = localStorage.getItem('infharma_custom_areas');
-    if (!saved) return {};
-    const parsed = JSON.parse(saved);
-    // Migrar de array a objeto si es necesario
-    if (Array.isArray(parsed)) {
-      return parsed.reduce((acc, area) => ({ ...acc, [area]: { subAreas: [] } }), {});
-    }
-    return parsed;
-  });
+  const [customAreas, setCustomAreas] = useState({});
   const [data, setData] = useState([]);
   const [isLoadingDrugs, setIsLoadingDrugs] = useState(false);
-  const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('infharma_settings')) || INITIAL_SETTINGS);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(false);
+  const [settings, setSettings] = useState(INITIAL_SETTINGS);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState('pro');
@@ -1154,11 +1147,62 @@ const App = () => {
     loadDrugs();
   }, [isAuthenticated]);
 
-  useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
-  useEffect(() => { localStorage.setItem('infharma_custom_areas', JSON.stringify(customAreas)); }, [customAreas]);
+  // Load settings from API when authenticated
+  useEffect(() => {
+    const loadSettings = async () => {
+      if (isAuthenticated) {
+        setIsLoadingSettings(true);
+        try {
+          const response = await settingsAPI.getSettings();
+          if (response.success && response.settings) {
+            const { customAreas: dbCustomAreas, logoUrl, primaryColor } = response.settings;
+
+            // Update customAreas from database
+            if (dbCustomAreas) {
+              setCustomAreas(dbCustomAreas);
+            }
+
+            // Update settings from database
+            setSettings(prevSettings => ({
+              ...prevSettings,
+              logoUrl: logoUrl || prevSettings.logoUrl,
+              primaryColor: primaryColor || prevSettings.primaryColor,
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading settings:', error);
+          // If error, keep defaults
+        } finally {
+          setIsLoadingSettings(false);
+        }
+      }
+    };
+    loadSettings();
+  }, [isAuthenticated]);
 
   const handleLogout = () => { authLogout(); setView('home'); setIsEditing(false); };
-  const handleSaveSettings = (newSettings) => { setSettings(newSettings); };
+
+  // Helper function to save customAreas to database
+  const saveCustomAreasToDb = async (areasToSave) => {
+    try {
+      await settingsAPI.updateSettings({ customAreas: areasToSave });
+    } catch (error) {
+      console.error('Error saving custom areas:', error);
+    }
+  };
+
+  const handleSaveSettings = async (newSettings) => {
+    setSettings(newSettings);
+    // Save to database
+    try {
+      await settingsAPI.updateSettings({
+        logoUrl: newSettings.logoUrl,
+        primaryColor: newSettings.primaryColor,
+      });
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  };
   const handleCompleteInitialSetup = async (setupData) => {
     // Actualizar perfil del usuario en la base de datos
     const result = await updateProfile({
@@ -1286,22 +1330,27 @@ const App = () => {
   };
   const handleCreateArea = (name) => {
     if(name && !customAreas[name]) {
-      setCustomAreas({...customAreas, [name]: { subAreas: [] }});
+      const newAreas = {...customAreas, [name]: { subAreas: [] }};
+      setCustomAreas(newAreas);
       setExpandedAreas({...expandedAreas, [name]: true});
+      saveCustomAreasToDb(newAreas);
     }
   };
 
   const handleCreateSubArea = (areaName, subAreaName) => {
+    let newAreas;
     if (customAreas[areaName]) {
       const updatedArea = {
         ...customAreas[areaName],
         subAreas: [...(customAreas[areaName].subAreas || []), subAreaName]
       };
-      setCustomAreas({...customAreas, [areaName]: updatedArea});
+      newAreas = {...customAreas, [areaName]: updatedArea};
     } else {
       // Si el área no existe en customAreas, créala
-      setCustomAreas({...customAreas, [areaName]: { subAreas: [subAreaName] }});
+      newAreas = {...customAreas, [areaName]: { subAreas: [subAreaName] }};
     }
+    setCustomAreas(newAreas);
+    saveCustomAreasToDb(newAreas);
   };
 
   const openSubAreaModal = (areaName) => {
@@ -1330,6 +1379,7 @@ const App = () => {
       delete newCustomAreas[oldName];
     }
     setCustomAreas(newCustomAreas);
+    saveCustomAreasToDb(newCustomAreas);
 
     // Actualizar todos los medicamentos que tengan este sistema
     setData(data.map(d => d.system === oldName ? { ...d, system: newName } : d));
@@ -1345,6 +1395,7 @@ const App = () => {
       const subAreas = newCustomAreas[areaName].subAreas.map(sa => sa === oldName ? newName : sa);
       newCustomAreas[areaName] = { ...newCustomAreas[areaName], subAreas };
       setCustomAreas(newCustomAreas);
+      saveCustomAreasToDb(newCustomAreas);
     }
 
     // Actualizar todos los medicamentos que tengan esta patología
