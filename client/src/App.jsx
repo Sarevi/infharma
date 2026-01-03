@@ -70,7 +70,6 @@ const INITIAL_DATA = [
     system: 'Digestivo',
     type: 'Anti-TNFα',
     presentation: 'Pluma/Jeringa 40mg',
-    updatedAt: '02/12/2025', 
     proSections: [
       {
          id: 'ren_hep_adj', title: 'Ajuste Renal y Hepático', type: 'adjustments',
@@ -1112,9 +1111,6 @@ const App = () => {
     setShowInitialSetup(false);
   };
   const handleSaveDrug = async (d) => {
-    const now = new Date();
-    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-
     try {
       const drugData = {
         name: d.name,
@@ -1123,7 +1119,6 @@ const App = () => {
         subArea: d.subArea,
         type: d.type,
         presentation: d.presentation,
-        updatedAt: dateStr,
         proSections: d.proSections || [],
         patientSections: d.patientSections || { intro: '', admin: [], layout: [] }
       };
@@ -1203,8 +1198,7 @@ const App = () => {
         system: pendingNewDrugSystem,
         subArea: pendingSubArea,
         type: '',
-        presentation: '',
-        updatedAt: new Date().toLocaleDateString()
+        presentation: ''
       });
     } else {
       // Empezar en blanco
@@ -1216,7 +1210,6 @@ const App = () => {
         system: pendingNewDrugSystem,
         type: '',
         presentation: '',
-        updatedAt: new Date().toLocaleDateString(),
         proSections: [],
         patientSections: { intro: '', admin: [], layout: [] }
       });
@@ -1292,7 +1285,26 @@ const App = () => {
     // Actualizar todos los medicamentos que tengan esta patología
     setData(data.map(d => (d.system === areaName && d.subArea === oldName) ? { ...d, subArea: newName } : d));
   };
-  const getOutdatedDrugs = () => { const parseDate = (str) => { if(!str) return new Date(0); const [d, m, y] = str.split('/'); return new Date(`${y}-${m}-${d}`); }; return [...data].sort((a,b) => parseDate(a.updatedAt) - parseDate(b.updatedAt)).slice(0, 2); };
+  // Helper function to format date for display
+  const formatDate = (dateVal) => {
+    if (!dateVal) return '';
+    const date = new Date(dateVal);
+    if (isNaN(date.getTime())) return '';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const getOutdatedDrugs = () => {
+    const parseDate = (dateVal) => {
+      if (!dateVal) return new Date(0);
+      // Handle Sequelize timestamp (ISO string or Date object)
+      const date = new Date(dateVal);
+      return isNaN(date.getTime()) ? new Date(0) : date;
+    };
+    return [...data].sort((a,b) => parseDate(a.updatedAt) - parseDate(b.updatedAt)).slice(0, 2);
+  };
   const outdatedDrugs = getOutdatedDrugs();
   const handleOpenLink = (url) => window.open(url, '_blank', 'noopener,noreferrer');
 
@@ -1779,7 +1791,7 @@ const App = () => {
 
                     {activeTab === 'pro' ? (
                        <div id="pdf-content" className="bg-white shadow-lg mx-auto p-12 min-h-[297mm] max-w-[210mm]">
-                          <div className="flex justify-between items-end border-b pb-6 mb-8"><div><h2 className="text-2xl font-black uppercase">Protocolo Clínico</h2><div className="flex items-center gap-2 text-sm text-slate-500 mt-1"><Activity size={16} className="text-indigo-500"/> Farmacia Hospitalaria</div></div><div className="text-right"><p className="text-xs font-bold text-slate-400 uppercase">Revisión</p><p className="font-mono text-sm">{selectedDrug.updatedAt}</p></div></div>
+                          <div className="flex justify-between items-end border-b pb-6 mb-8"><div><h2 className="text-2xl font-black uppercase">Protocolo Clínico</h2><div className="flex items-center gap-2 text-sm text-slate-500 mt-1"><Activity size={16} className="text-indigo-500"/> Farmacia Hospitalaria</div></div><div className="text-right"><p className="text-xs font-bold text-slate-400 uppercase">Revisión</p><p className="font-mono text-sm">{formatDate(selectedDrug.updatedAt)}</p></div></div>
                           <div>{selectedDrug.proSections.map(section => (<ProSection key={section.id} section={section} isEditing={isEditing} updateContent={(f,v)=>setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,[f]:v}:s)})} onRemove={()=>{if(window.confirm("Borrar sección?")) setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.filter(s=>s.id!==section.id)})}}>{renderProContent(section)}</ProSection>))}</div>
                           {isEditing && (<div className="mt-12 pt-6 border-t border-dashed text-center flex gap-3 justify-center no-print"><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Nueva Sección', type: 'text', content: 'Escriba aquí el contenido del protocolo...' }]})} className="px-6 py-3 bg-indigo-50 text-indigo-700 rounded-full font-bold text-sm hover:bg-indigo-100 flex items-center"><Plus size={16} className="mr-2"/> Texto Libre</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Ajuste Renal/Hepático', type: 'adjustments', items: [{label: 'Criterio', action: 'Acción'}] }]})} className="px-6 py-3 bg-amber-100 text-amber-700 rounded-full font-bold text-sm hover:bg-amber-200 flex items-center border border-amber-300"><AlertTriangle size={16} className="mr-2"/> Ajustes Dosis</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Gráfica Posología', type: 'timeline', data: [{ week: 'S0', dose: 100, label: 'Inicio', subtext: '', color: 'indigo', height: 100 }] }]})} className="px-6 py-3 bg-emerald-50 text-emerald-700 rounded-full font-bold text-sm hover:bg-emerald-100 flex items-center"><BarChart3 size={16} className="mr-2"/> Gráfica</button><button onClick={()=>setSelectedDrug({...selectedDrug, proSections: [...selectedDrug.proSections, { id: Date.now(), title: 'Checklist', type: 'checklist', items: ['Requisito 1'] }]})} className="px-6 py-3 bg-sky-50 text-sky-700 rounded-full font-bold text-sm hover:bg-sky-100 flex items-center"><CheckCircle size={16} className="mr-2"/> Checklist</button></div>)}
                        </div>

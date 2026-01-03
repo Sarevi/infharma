@@ -56,7 +56,6 @@ export const createDrug = async (req, res) => {
       subArea,
       type,
       presentation,
-      updatedAt,
       proSections,
       patientSections
     } = req.body;
@@ -73,7 +72,6 @@ export const createDrug = async (req, res) => {
       subArea,
       type,
       presentation,
-      updatedAt,
       proSections: proSections || [],
       patientSections: patientSections || { intro: '', admin: [], layout: [] }
     });
@@ -128,7 +126,6 @@ export const updateDrug = async (req, res) => {
       subArea,
       type,
       presentation,
-      updatedAt,
       proSections,
       patientSections
     } = req.body;
@@ -140,7 +137,6 @@ export const updateDrug = async (req, res) => {
       subArea: subArea !== undefined ? subArea : drug.subArea,
       type: type !== undefined ? type : drug.type,
       presentation: presentation !== undefined ? presentation : drug.presentation,
-      updatedAt: updatedAt !== undefined ? updatedAt : drug.updatedAt,
       proSections: proSections !== undefined ? proSections : drug.proSections,
       patientSections: patientSections !== undefined ? patientSections : drug.patientSections
     });

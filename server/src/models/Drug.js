@@ -47,11 +47,6 @@ const Drug = sequelize.define('Drug', {
     type: DataTypes.STRING,
     allowNull: true,
   },
-  updatedAt: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    comment: 'Custom update date in DD/MM/YYYY format',
-  },
   proSections: {
     type: DataTypes.JSONB,
     allowNull: true,
