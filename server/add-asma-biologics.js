@@ -664,6 +664,8 @@ async function addBiologics() {
       customAreas['Neumología'].subAreas.push('Asma');
     }
 
+    // Forzar actualización de campo JSONB
+    settings.changed('customAreas', true);
     await settings.update({ customAreas });
     console.log('✅ Área "Neumología" y patología "Asma" creadas/actualizadas\n');
 
