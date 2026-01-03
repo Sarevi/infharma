@@ -3,10 +3,12 @@ import { UserSettings } from '../models/index.js';
 /**
  * Get user settings
  * - Creates default settings if they don't exist
+ * - Auto-syncs customAreas from user's drugs
  */
 export const getSettings = async (req, res) => {
   try {
     const userId = req.user.id;
+    const { Drug } = await import('../models/index.js');
 
     let settings = await UserSettings.findOne({
       where: { userId }
@@ -22,10 +24,60 @@ export const getSettings = async (req, res) => {
       });
     }
 
+    // AUTO-SYNC: Build customAreas from user's drugs + global drugs
+    const drugs = await Drug.findAll({
+      where: {
+        [require('sequelize').Op.or]: [
+          { userId },
+          { isGlobal: true }
+        ]
+      }
+    });
+
+    // Build areas map from drugs
+    const areasFromDrugs = {};
+    drugs.forEach(drug => {
+      if (drug.system && drug.subArea) {
+        if (!areasFromDrugs[drug.system]) {
+          areasFromDrugs[drug.system] = { subAreas: [] };
+        }
+        if (!areasFromDrugs[drug.system].subAreas.includes(drug.subArea)) {
+          areasFromDrugs[drug.system].subAreas.push(drug.subArea);
+        }
+      }
+    });
+
+    // Merge with existing customAreas (preserve user-created empty areas)
+    const existingAreas = settings.customAreas || {};
+    const mergedAreas = { ...areasFromDrugs };
+
+    // Add empty areas that user created manually
+    Object.keys(existingAreas).forEach(areaName => {
+      if (!mergedAreas[areaName]) {
+        mergedAreas[areaName] = existingAreas[areaName];
+      } else {
+        // Merge subAreas
+        const existingSubAreas = existingAreas[areaName].subAreas || [];
+        existingSubAreas.forEach(subArea => {
+          if (!mergedAreas[areaName].subAreas.includes(subArea)) {
+            mergedAreas[areaName].subAreas.push(subArea);
+          }
+        });
+      }
+    });
+
+    // Update settings if changed
+    const areasChanged = JSON.stringify(settings.customAreas) !== JSON.stringify(mergedAreas);
+    if (areasChanged) {
+      settings.customAreas = mergedAreas;
+      settings.changed('customAreas', true);
+      await settings.save();
+    }
+
     res.json({
       success: true,
       settings: {
-        customAreas: settings.customAreas,
+        customAreas: mergedAreas,
         logoUrl: settings.logoUrl,
         primaryColor: settings.primaryColor,
       }
