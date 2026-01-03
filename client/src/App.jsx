@@ -1135,6 +1135,37 @@ const App = () => {
           const response = await drugsAPI.getDrugs();
           if (response.success && response.drugs) {
             setData(response.drugs);
+
+            // AUTO-MIGRATION: Check localStorage for drugs not in database
+            try {
+              const localStorageDrugs = localStorage.getItem('data');
+              if (localStorageDrugs) {
+                const parsedLocalDrugs = JSON.parse(localStorageDrugs);
+                if (Array.isArray(parsedLocalDrugs) && parsedLocalDrugs.length > 0) {
+                  // Find drugs in localStorage that don't exist in database
+                  const dbDrugIds = new Set(response.drugs.map(d => d.id));
+                  const drugsToMigrate = parsedLocalDrugs.filter(d => !dbDrugIds.has(d.id));
+
+                  if (drugsToMigrate.length > 0) {
+                    console.log(`Found ${drugsToMigrate.length} drugs in localStorage to migrate`);
+                    const migrationAPI = await import('./api/migration.js');
+                    const migrationResult = await migrationAPI.migrateDrugs(drugsToMigrate);
+                    console.log('Migration result:', migrationResult);
+
+                    // Reload drugs after migration
+                    const reloadResponse = await drugsAPI.getDrugs();
+                    if (reloadResponse.success && reloadResponse.drugs) {
+                      setData(reloadResponse.drugs);
+                    }
+
+                    // Clear localStorage after successful migration
+                    localStorage.removeItem('data');
+                  }
+                }
+              }
+            } catch (migrationError) {
+              console.error('Migration error (non-critical):', migrationError);
+            }
           }
         } catch (error) {
           console.error('Error loading drugs:', error);

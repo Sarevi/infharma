@@ -27,6 +27,7 @@ import messageRoutes from './routes/messages.js';
 import contactRoutes from './routes/contacts.js';
 import drugRoutes from './routes/drugs.js';
 import settingsRoutes from './routes/settings.js';
+import migrationRoutes from './routes/migration.js';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -108,6 +109,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/drugs', drugRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/migrate', migrationRoutes);
 
 // Serve static files from React app in production
 if (process.env.NODE_ENV === 'production') {
