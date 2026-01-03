@@ -142,6 +142,28 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
+  const updateProfile = async (profileData) => {
+    try {
+      const response = await apiClient.put('/auth/profile', profileData);
+      const { user: userData } = response.data.data;
+
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      return {
+        success: true,
+        user: userData,
+        message: response.data.message,
+      };
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error al actualizar perfil',
+      };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -154,6 +176,7 @@ export const AuthProvider = ({ children }) => {
         resendVerification,
         logout,
         updateUser,
+        updateProfile,
       }}
     >
       {children}

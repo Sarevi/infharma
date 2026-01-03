@@ -5,6 +5,7 @@ import {
   refreshToken,
   logout,
   getCurrentUser,
+  updateProfile,
   verifyEmail,
   resendVerification,
 } from '../controllers/authController.js';
@@ -22,5 +23,6 @@ router.post('/resend-verification', resendVerification);
 // Protected routes
 router.post('/logout', authenticate, logout);
 router.get('/me', authenticate, getCurrentUser);
+router.put('/profile', authenticate, updateProfile);
 
 export default router;
