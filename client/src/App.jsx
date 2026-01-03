@@ -1066,7 +1066,12 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
        <div id="pdf-content" className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0">
           <div className="flex justify-between items-start border-b-4 border-indigo-600 pb-4 mb-6"><div className="flex gap-4 items-center"><div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 text-indigo-600">{settings.logoUrl?<img src={settings.logoUrl} className="w-full h-full object-contain p-2"/>:<Stethoscope size={32}/>}</div><div><h1 className="text-2xl font-black text-slate-900 tracking-tight">{drug.name}</h1><p className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">Guía de Inicio</p></div></div><div className="text-right"><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{settings.hospitalName}</div></div></div>
           <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)}>{renderCardContent(item, index)}</ResizableCard>))}</div>
-          {isEditing && <div className="mb-6 flex justify-center"><button onClick={()=>updatePat('layout',[...layout,{id:`custom_${Date.now()}`,type:'custom',colSpan:4,heightLevel:1,color:'indigo', iconName:'Consejo'}])} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs"><Plus size={16} className="mr-2"/> AÑADIR TARJETA</button></div>}
+          {isEditing && <div className="mb-6 flex justify-center"><button onClick={()=>{
+            const newCardId = `custom_${Date.now()}`;
+            const newCard = {id: newCardId, title: 'Nueva Tarjeta', content: 'Contenido de la tarjeta...'};
+            updatePat('customCards', [...customCards, newCard]);
+            updatePat('layout', [...layout, {id: newCardId, type:'custom', colSpan:4, heightLevel:1, color:'indigo', iconName:'Consejo'}]);
+          }} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs"><Plus size={16} className="mr-2"/> AÑADIR TARJETA</button></div>}
           <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center"><div className="flex gap-6"><div className="flex gap-2 items-center"><Phone size={14} className="text-slate-400"/><EditableText value={drug.patientSections.contacts?.phone} isEditing={isEditing} onChange={v=>updateContact('phone',v)} className="text-xs font-bold text-slate-700"/></div></div></div>
        </div>
     </div>
@@ -1433,20 +1438,44 @@ const App = () => {
         );
       }
       if (section.type === 'table') {
-        const updateHeaders = (newHeaders) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,headers:newHeaders}:s)});
-        const updateRows = (newRows) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,rows:newRows}:s)});
-        const addRow = () => updateRows([...section.rows, Array(section.headers.length).fill('')]);
-        const removeRow = (idx) => { const n = [...section.rows]; n.splice(idx, 1); updateRows(n); };
+        const updateTable = (updates) => {
+          setSelectedDrug({
+            ...selectedDrug,
+            proSections: selectedDrug.proSections.map(s =>
+              s.id === section.id ? {...s, ...updates} : s
+            )
+          });
+        };
+        const addRow = () => {
+          const newRow = Array(section.headers.length).fill('');
+          updateTable({ rows: [...section.rows, newRow] });
+        };
+        const removeRow = (idx) => {
+          const newRows = [...section.rows];
+          newRows.splice(idx, 1);
+          updateTable({ rows: newRows });
+        };
         const addColumn = () => {
-          updateHeaders([...section.headers, 'Nueva Columna']);
-          updateRows(section.rows.map(row => [...row, '']));
+          const newHeaders = [...section.headers, 'Nueva Columna'];
+          const newRows = section.rows.map(row => [...row, '']);
+          updateTable({ headers: newHeaders, rows: newRows });
         };
         const removeColumn = (colIdx) => {
-          if (section.headers.length <= 1) return; // Mantener al menos 1 columna
+          if (section.headers.length <= 1) return;
           const newHeaders = section.headers.filter((_, i) => i !== colIdx);
           const newRows = section.rows.map(row => row.filter((_, i) => i !== colIdx));
-          updateHeaders(newHeaders);
-          updateRows(newRows);
+          updateTable({ headers: newHeaders, rows: newRows });
+        };
+        const updateCell = (rowIdx, cellIdx, value) => {
+          const newRows = [...section.rows];
+          newRows[rowIdx] = [...newRows[rowIdx]];
+          newRows[rowIdx][cellIdx] = value;
+          updateTable({ rows: newRows });
+        };
+        const updateHeader = (colIdx, value) => {
+          const newHeaders = [...section.headers];
+          newHeaders[colIdx] = value;
+          updateTable({ headers: newHeaders });
         };
         return (
           <div className="my-8 w-full overflow-x-auto">
@@ -1461,16 +1490,12 @@ const App = () => {
                             <input
                               type="text"
                               value={header}
-                              onChange={e => {
-                                const newHeaders = [...section.headers];
-                                newHeaders[colIdx] = e.target.value;
-                                updateHeaders(newHeaders);
-                              }}
+                              onChange={e => updateHeader(colIdx, e.target.value)}
                               className="w-full bg-white border border-teal-300 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-500"
                             />
                             <button
                               onClick={() => removeColumn(colIdx)}
-                              className="text-teal-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="text-teal-400 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                               title="Eliminar columna"
                             >
                               <X size={14}/>
@@ -1502,12 +1527,8 @@ const App = () => {
                           {isEditing ? (
                             <input
                               type="text"
-                              value={cell}
-                              onChange={e => {
-                                const newRows = [...section.rows];
-                                newRows[rowIdx][cellIdx] = e.target.value;
-                                updateRows(newRows);
-                              }}
+                              value={cell || ''}
+                              onChange={e => updateCell(rowIdx, cellIdx, e.target.value)}
                               className="w-full bg-white border border-teal-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-teal-400"
                             />
                           ) : (
