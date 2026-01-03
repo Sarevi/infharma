@@ -4,6 +4,7 @@ import ConversationParticipant from './ConversationParticipant.js';
 import Message from './Message.js';
 import ContactRequest from './ContactRequest.js';
 import Drug from './Drug.js';
+import UserSettings from './UserSettings.js';
 
 // User <-> Drug (One to Many)
 User.hasMany(Drug, {
@@ -15,6 +16,18 @@ User.hasMany(Drug, {
 Drug.belongsTo(User, {
   foreignKey: 'userId',
   as: 'owner',
+});
+
+// User <-> UserSettings (One to One)
+User.hasOne(UserSettings, {
+  foreignKey: 'userId',
+  as: 'settings',
+  onDelete: 'CASCADE',
+});
+
+UserSettings.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
 });
 
 // User <-> Conversation (Many to Many through ConversationParticipant)
@@ -121,4 +134,4 @@ User.hasMany(ContactRequest, {
   as: 'receivedContactRequests',
 });
 
-export { User, Conversation, ConversationParticipant, Message, ContactRequest, Drug };
+export { User, Conversation, ConversationParticipant, Message, ContactRequest, Drug, UserSettings };

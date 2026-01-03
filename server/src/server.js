@@ -21,6 +21,7 @@ import conversationRoutes from './routes/conversations.js';
 import messageRoutes from './routes/messages.js';
 import contactRoutes from './routes/contacts.js';
 import drugRoutes from './routes/drugs.js';
+import settingsRoutes from './routes/settings.js';
 
 // Import middleware
 import { errorHandler, notFound } from './middleware/errorHandler.js';
@@ -101,6 +102,7 @@ app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/contacts', contactRoutes);
 app.use('/api/drugs', drugRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Error handling
 app.use(notFound);
