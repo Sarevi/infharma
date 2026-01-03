@@ -1061,7 +1061,8 @@ const App = () => {
     }
     return parsed;
   });
-  const [data, setData] = useState(() => JSON.parse(localStorage.getItem('infharma_data')) || INITIAL_DATA);
+  const [data, setData] = useState([]);
+  const [isLoadingDrugs, setIsLoadingDrugs] = useState(false);
   const [settings, setSettings] = useState(() => JSON.parse(localStorage.getItem('infharma_settings')) || INITIAL_SETTINGS);
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -1079,7 +1080,27 @@ const App = () => {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameData, setRenameData] = useState({ type: 'area', currentName: '', areaName: '', pathologyName: '' });
 
-  useEffect(() => { localStorage.setItem('infharma_data', JSON.stringify(data)); }, [data]);
+  // Load drugs from API when authenticated
+  useEffect(() => {
+    const loadDrugs = async () => {
+      if (isAuthenticated) {
+        setIsLoadingDrugs(true);
+        try {
+          const response = await drugsAPI.getDrugs();
+          if (response.success && response.drugs) {
+            setData(response.drugs);
+          }
+        } catch (error) {
+          console.error('Error loading drugs:', error);
+          // If error, keep empty array
+        } finally {
+          setIsLoadingDrugs(false);
+        }
+      }
+    };
+    loadDrugs();
+  }, [isAuthenticated]);
+
   useEffect(() => { localStorage.setItem('infharma_settings', JSON.stringify(settings)); }, [settings]);
   useEffect(() => { localStorage.setItem('infharma_custom_areas', JSON.stringify(customAreas)); }, [customAreas]);
 
@@ -1090,9 +1111,77 @@ const App = () => {
     localStorage.setItem('infharma_setup_completed', 'true');
     setShowInitialSetup(false);
   };
-  const handleSaveDrug = (d) => { const now = new Date(); const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`; const toSave = { ...d, updatedAt: dateStr }; setData(prev => { const ex = prev.find(x=>x.id===toSave.id); return ex ? prev.map(x=>x.id===toSave.id?toSave:x) : [...prev, toSave]; }); setIsCreating(false); setIsEditing(false); };
-  const handleCancelEdit = () => { if(isCreating){ setIsCreating(false); setIsEditing(false); setView('home'); setSelectedDrug(null); } else { const orig = data.find(d=>d.id===selectedDrug.id); if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig))); setIsEditing(false); }};
-  const handleDeleteDrug = (id) => { if(window.confirm("¿Eliminar?")) { setData(data.filter(d=>d.id!==id)); setSelectedDrug(null); setView('home'); setIsEditing(false); }};
+  const handleSaveDrug = async (d) => {
+    const now = new Date();
+    const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+
+    try {
+      const drugData = {
+        name: d.name,
+        dci: d.dci,
+        system: d.system,
+        subArea: d.subArea,
+        type: d.type,
+        presentation: d.presentation,
+        updatedAt: dateStr,
+        proSections: d.proSections || [],
+        patientSections: d.patientSections || { intro: '', admin: [], layout: [] }
+      };
+
+      // Check if it's a new drug (id starts with 'new-') or existing (UUID)
+      const isNewDrug = d.id && d.id.toString().startsWith('new-');
+
+      let savedDrug;
+      if (isNewDrug) {
+        // Create new drug
+        const response = await drugsAPI.createDrug(drugData);
+        savedDrug = response.drug;
+        // Add to local state
+        setData(prev => [...prev, savedDrug]);
+      } else {
+        // Update existing drug
+        const response = await drugsAPI.updateDrug(d.id, drugData);
+        savedDrug = response.drug;
+        // Update in local state
+        setData(prev => prev.map(x => x.id === d.id ? savedDrug : x));
+      }
+
+      setIsCreating(false);
+      setIsEditing(false);
+      setSelectedDrug(savedDrug);
+    } catch (error) {
+      console.error('Error saving drug:', error);
+      alert('Error al guardar el medicamento: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleCancelEdit = () => {
+    if(isCreating){
+      setIsCreating(false);
+      setIsEditing(false);
+      setView('home');
+      setSelectedDrug(null);
+    } else {
+      const orig = data.find(d=>d.id===selectedDrug.id);
+      if(orig) setSelectedDrug(JSON.parse(JSON.stringify(orig)));
+      setIsEditing(false);
+    }
+  };
+
+  const handleDeleteDrug = async (id) => {
+    if(window.confirm("¿Eliminar?")) {
+      try {
+        await drugsAPI.deleteDrug(id);
+        setData(data.filter(d=>d.id!==id));
+        setSelectedDrug(null);
+        setView('home');
+        setIsEditing(false);
+      } catch (error) {
+        console.error('Error deleting drug:', error);
+        alert('Error al eliminar el medicamento: ' + (error.response?.data?.message || error.message));
+      }
+    }
+  };
 
   const handleAddNew = (sys='', subArea='') => {
     setPendingNewDrugSystem(sys);
@@ -1542,7 +1631,14 @@ const App = () => {
                  )}
                </button>
 
-               {Array.from(new Set([...data.map(d=>d.system).filter(Boolean),...Object.keys(customAreas)])).sort().map(sys => {
+               {isLoadingDrugs && (
+                 <div className="flex items-center justify-center py-8 text-slate-400">
+                   <Loader size={20} className="animate-spin mr-2"/>
+                   <span className="text-sm">Cargando medicamentos...</span>
+                 </div>
+               )}
+
+               {!isLoadingDrugs && Array.from(new Set([...data.map(d=>d.system).filter(Boolean),...Object.keys(customAreas)])).sort().map(sys => {
                   const allDrugsInArea = data.filter(d => d.system === sys && (d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.dci.toLowerCase().includes(searchTerm.toLowerCase())));
                   const subAreas = customAreas[sys]?.subAreas || [];
 
