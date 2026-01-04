@@ -1070,8 +1070,16 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
           {isEditing && <div className="mb-6 flex justify-center"><button onClick={()=>{
             const newCardId = `custom_${Date.now()}`;
             const newCard = {id: newCardId, title: 'Nueva Tarjeta', content: 'Contenido de la tarjeta...'};
-            updatePat('customCards', [...customCards, newCard]);
-            updatePat('layout', [...layout, {id: newCardId, type:'custom', colSpan:4, heightLevel:1, color:'indigo', iconName:'Consejo'}]);
+            const newLayoutItem = {id: newCardId, type:'custom', colSpan:4, heightLevel:1, color:'indigo', iconName:'Consejo'};
+            // Update both customCards and layout in a single call to avoid race condition
+            updateDrug({
+              ...drug,
+              patientSections: {
+                ...drug.patientSections,
+                customCards: [...customCards, newCard],
+                layout: [...layout, newLayoutItem]
+              }
+            });
           }} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs"><Plus size={16} className="mr-2"/> AÑADIR TARJETA</button></div>}
           <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center"><div className="flex gap-6"><div className="flex gap-2 items-center"><Phone size={14} className="text-slate-400"/><EditableText value={drug.patientSections.contacts?.phone} isEditing={isEditing} onChange={v=>updateContact('phone',v)} className="text-xs font-bold text-slate-700"/></div></div></div>
        </div>

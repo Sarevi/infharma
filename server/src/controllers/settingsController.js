@@ -1,4 +1,4 @@
-import { UserSettings, Drug } from '../models/index.js';
+import { UserSettings, Drug, User } from '../models/index.js';
 import { Op } from 'sequelize';
 
 /**
@@ -24,6 +24,26 @@ export const getSettings = async (req, res) => {
       });
     }
 
+    // Auto-sync: Mark all admin drugs as global if not already
+    // This ensures backward compatibility for drugs created before isGlobal was implemented
+    const adminUser = await User.findOne({
+      where: {
+        email: { [Op.iLike]: 'admin@infharma.com' }
+      }
+    });
+
+    if (adminUser) {
+      await Drug.update(
+        { isGlobal: true },
+        {
+          where: {
+            userId: adminUser.id,
+            isGlobal: false
+          }
+        }
+      );
+    }
+
     // AUTO-SYNC: Build customAreas from user's drugs + global drugs
     const drugs = await Drug.findAll({
       where: {
@@ -34,14 +54,19 @@ export const getSettings = async (req, res) => {
       }
     });
 
+    console.log(`[getSettings] Found ${drugs.length} drugs for user ${userId}`);
+    console.log(`[getSettings] Drugs with subArea:`, drugs.filter(d => d.subArea).map(d => ({ name: d.name, system: d.system, subArea: d.subArea, isGlobal: d.isGlobal })));
+
     // Build areas map from drugs
     const areasFromDrugs = {};
     drugs.forEach(drug => {
-      if (drug.system && drug.subArea) {
+      // Add area even if no subArea (to show the area exists)
+      if (drug.system) {
         if (!areasFromDrugs[drug.system]) {
           areasFromDrugs[drug.system] = { subAreas: [] };
         }
-        if (!areasFromDrugs[drug.system].subAreas.includes(drug.subArea)) {
+        // Add subArea if it exists
+        if (drug.subArea && !areasFromDrugs[drug.system].subAreas.includes(drug.subArea)) {
           areasFromDrugs[drug.system].subAreas.push(drug.subArea);
         }
       }
