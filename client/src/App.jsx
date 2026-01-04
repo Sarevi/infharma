@@ -1124,6 +1124,77 @@ const App = () => {
   const [showInitialSetup, setShowInitialSetup] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameData, setRenameData] = useState({ type: 'area', currentName: '', areaName: '', pathologyName: '' });
+  const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+  const autoSaveTimeoutRef = useRef(null);
+  const lastSavedDrugRef = useRef(null);
+
+  // Auto-save functionality with debounce
+  useEffect(() => {
+    // Only auto-save when editing an existing drug (not a new one)
+    if (!isEditing || !selectedDrug || !selectedDrug.id || selectedDrug.id.toString().startsWith('new-')) {
+      return;
+    }
+
+    // Skip if drug hasn't actually changed from last saved version
+    const drugString = JSON.stringify(selectedDrug);
+    if (lastSavedDrugRef.current === drugString) {
+      return;
+    }
+
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    setAutoSaveStatus('saving');
+
+    // Debounce: save after 2 seconds of no changes
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        const defaultPatientSections = { intro: '', admin: [], layout: [], customCards: [] };
+        const patientSections = selectedDrug.patientSections
+          ? { ...defaultPatientSections, ...selectedDrug.patientSections }
+          : defaultPatientSections;
+
+        const drugData = {
+          name: selectedDrug.name,
+          dci: selectedDrug.dci,
+          system: selectedDrug.system,
+          subArea: selectedDrug.subArea,
+          type: selectedDrug.type,
+          presentation: selectedDrug.presentation,
+          proSections: selectedDrug.proSections || [],
+          patientSections
+        };
+
+        const response = await drugsAPI.updateDrug(selectedDrug.id, drugData);
+        const savedDrug = response.drug;
+
+        // Update in local state without triggering another save
+        setData(prev => prev.map(x => x.id === selectedDrug.id ? savedDrug : x));
+        lastSavedDrugRef.current = JSON.stringify(savedDrug);
+        setAutoSaveStatus('saved');
+
+        console.log('[AutoSave] Drug saved successfully:', savedDrug.name);
+      } catch (error) {
+        console.error('[AutoSave] Error saving drug:', error);
+        setAutoSaveStatus('error');
+      }
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [selectedDrug, isEditing]);
+
+  // Update lastSavedDrugRef when selecting a drug
+  useEffect(() => {
+    if (selectedDrug && selectedDrug.id && !selectedDrug.id.toString().startsWith('new-')) {
+      lastSavedDrugRef.current = JSON.stringify(selectedDrug);
+    }
+  }, [selectedDrug?.id]);
 
   // Check if user needs to complete initial setup
   useEffect(() => {
@@ -1268,6 +1339,12 @@ const App = () => {
   };
   const handleSaveDrug = async (d) => {
     try {
+      // Clear any pending auto-save
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      setAutoSaveStatus('saving');
+
       // Ensure patientSections has all required fields including customCards
       const defaultPatientSections = { intro: '', admin: [], layout: [], customCards: [] };
       const patientSections = d.patientSections
@@ -1303,16 +1380,27 @@ const App = () => {
         setData(prev => prev.map(x => x.id === d.id ? savedDrug : x));
       }
 
+      // Update lastSavedDrugRef to prevent auto-save from triggering
+      lastSavedDrugRef.current = JSON.stringify(savedDrug);
+      setAutoSaveStatus('saved');
+
       setIsCreating(false);
       setIsEditing(false);
       setSelectedDrug(savedDrug);
     } catch (error) {
       console.error('Error saving drug:', error);
+      setAutoSaveStatus('error');
       alert('Error al guardar el medicamento: ' + (error.response?.data?.message || error.message));
     }
   };
 
   const handleCancelEdit = () => {
+    // Clear any pending auto-save
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    setAutoSaveStatus('saved');
+
     if(isCreating){
       setIsCreating(false);
       setIsEditing(false);
@@ -2122,6 +2210,20 @@ const App = () => {
                           </button>
                           {isEditing ? (
                             <>
+                              {/* Auto-save status indicator */}
+                              <span className={`text-xs px-2 py-1 rounded flex items-center ${
+                                autoSaveStatus === 'saving' ? 'text-amber-600 bg-amber-50' :
+                                autoSaveStatus === 'error' ? 'text-red-600 bg-red-50' :
+                                'text-green-600 bg-green-50'
+                              }`}>
+                                {autoSaveStatus === 'saving' ? (
+                                  <><Loader size={12} className="mr-1 animate-spin"/> Guardando...</>
+                                ) : autoSaveStatus === 'error' ? (
+                                  <><AlertCircle size={12} className="mr-1"/> Error</>
+                                ) : (
+                                  <><Check size={12} className="mr-1"/> Guardado</>
+                                )}
+                              </span>
                               <button onClick={handleCancelEdit} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 font-medium">
                                 Cancelar
                               </button>
