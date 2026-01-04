@@ -1,4 +1,5 @@
-import { UserSettings } from '../models/index.js';
+import { UserSettings, Drug } from '../models/index.js';
+import { Op } from 'sequelize';
 
 /**
  * Get user settings
@@ -8,7 +9,6 @@ import { UserSettings } from '../models/index.js';
 export const getSettings = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { Drug } = await import('../models/index.js');
 
     let settings = await UserSettings.findOne({
       where: { userId }
@@ -27,7 +27,7 @@ export const getSettings = async (req, res) => {
     // AUTO-SYNC: Build customAreas from user's drugs + global drugs
     const drugs = await Drug.findAll({
       where: {
-        [require('sequelize').Op.or]: [
+        [Op.or]: [
           { userId },
           { isGlobal: true }
         ]
