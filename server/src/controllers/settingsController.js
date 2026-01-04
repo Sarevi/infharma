@@ -4,17 +4,20 @@ import { Op } from 'sequelize';
 /**
  * Get user settings
  * - Creates default settings if they don't exist
- * - Auto-syncs customAreas from user's drugs
+ * - GLOBAL DATA: Areas, pathologies, and drugs from admin@infharma.com are visible to ALL users
+ * - LOCAL DATA: Each user can add their own areas, pathologies, and drugs (only visible to them)
  */
 export const getSettings = async (req, res) => {
   try {
     const userId = req.user.id;
+    const userEmail = req.user.email.toLowerCase().trim();
+    const isAdmin = userEmail === 'admin@infharma.com';
 
+    // Get or create user settings
     let settings = await UserSettings.findOne({
       where: { userId }
     });
 
-    // Create default settings if they don't exist
     if (!settings) {
       settings = await UserSettings.create({
         userId,
@@ -24,14 +27,14 @@ export const getSettings = async (req, res) => {
       });
     }
 
-    // Auto-sync: Mark all admin drugs as global if not already
-    // This ensures backward compatibility for drugs created before isGlobal was implemented
+    // Find admin user
     const adminUser = await User.findOne({
       where: {
         email: { [Op.iLike]: 'admin@infharma.com' }
       }
     });
 
+    // Mark all admin drugs as global (backward compatibility)
     if (adminUser) {
       await Drug.update(
         { isGlobal: true },
@@ -44,7 +47,22 @@ export const getSettings = async (req, res) => {
       );
     }
 
-    // AUTO-SYNC: Build customAreas from user's drugs + global drugs
+    // ============================================
+    // STEP 1: Get ADMIN's customAreas (GLOBAL areas/pathologies)
+    // ============================================
+    let adminAreas = {};
+    if (adminUser && !isAdmin) {
+      const adminSettings = await UserSettings.findOne({
+        where: { userId: adminUser.id }
+      });
+      if (adminSettings && adminSettings.customAreas) {
+        adminAreas = adminSettings.customAreas;
+      }
+    }
+
+    // ============================================
+    // STEP 2: Get all drugs (user's own + global from admin)
+    // ============================================
     const drugs = await Drug.findAll({
       where: {
         [Op.or]: [
@@ -54,50 +72,67 @@ export const getSettings = async (req, res) => {
       }
     });
 
-    console.log(`[getSettings] Found ${drugs.length} drugs for user ${userId}`);
-    console.log(`[getSettings] Drugs with subArea:`, drugs.filter(d => d.subArea).map(d => ({ name: d.name, system: d.system, subArea: d.subArea, isGlobal: d.isGlobal })));
+    console.log(`[getSettings] User: ${userEmail}, isAdmin: ${isAdmin}`);
+    console.log(`[getSettings] Found ${drugs.length} drugs`);
+    console.log(`[getSettings] Admin areas:`, adminAreas);
 
-    // Build areas map from drugs
+    // ============================================
+    // STEP 3: Build areas from drugs
+    // ============================================
     const areasFromDrugs = {};
     drugs.forEach(drug => {
-      // Add area even if no subArea (to show the area exists)
       if (drug.system) {
         if (!areasFromDrugs[drug.system]) {
           areasFromDrugs[drug.system] = { subAreas: [] };
         }
-        // Add subArea if it exists
         if (drug.subArea && !areasFromDrugs[drug.system].subAreas.includes(drug.subArea)) {
           areasFromDrugs[drug.system].subAreas.push(drug.subArea);
         }
       }
     });
 
-    // Merge with existing customAreas (preserve user-created empty areas)
-    const existingAreas = settings.customAreas || {};
-    const mergedAreas = { ...areasFromDrugs };
+    // ============================================
+    // STEP 4: Merge all areas
+    // Priority: adminAreas + areasFromDrugs + userAreas
+    // ============================================
+    const userAreas = settings.customAreas || {};
+    const mergedAreas = {};
 
-    // Add empty areas that user created manually
-    Object.keys(existingAreas).forEach(areaName => {
-      if (!mergedAreas[areaName]) {
-        mergedAreas[areaName] = existingAreas[areaName];
-      } else {
-        // Merge subAreas
-        const existingSubAreas = existingAreas[areaName].subAreas || [];
-        existingSubAreas.forEach(subArea => {
-          if (!mergedAreas[areaName].subAreas.includes(subArea)) {
-            mergedAreas[areaName].subAreas.push(subArea);
-          }
-        });
-      }
+    // First, add admin areas (global)
+    Object.keys(adminAreas).forEach(areaName => {
+      mergedAreas[areaName] = {
+        subAreas: [...(adminAreas[areaName].subAreas || [])]
+      };
     });
 
-    // Update settings if changed
-    const areasChanged = JSON.stringify(settings.customAreas) !== JSON.stringify(mergedAreas);
-    if (areasChanged) {
-      settings.customAreas = mergedAreas;
-      settings.changed('customAreas', true);
-      await settings.save();
-    }
+    // Then, add/merge areas from drugs
+    Object.keys(areasFromDrugs).forEach(areaName => {
+      if (!mergedAreas[areaName]) {
+        mergedAreas[areaName] = { subAreas: [] };
+      }
+      areasFromDrugs[areaName].subAreas.forEach(subArea => {
+        if (!mergedAreas[areaName].subAreas.includes(subArea)) {
+          mergedAreas[areaName].subAreas.push(subArea);
+        }
+      });
+    });
+
+    // Finally, add/merge user's own areas (local)
+    Object.keys(userAreas).forEach(areaName => {
+      if (!mergedAreas[areaName]) {
+        mergedAreas[areaName] = { subAreas: [] };
+      }
+      (userAreas[areaName].subAreas || []).forEach(subArea => {
+        if (!mergedAreas[areaName].subAreas.includes(subArea)) {
+          mergedAreas[areaName].subAreas.push(subArea);
+        }
+      });
+    });
+
+    console.log(`[getSettings] Merged areas:`, mergedAreas);
+
+    // Don't save merged areas to user's settings (keep their data separate)
+    // Only return the merged view
 
     res.json({
       success: true,
@@ -120,6 +155,7 @@ export const getSettings = async (req, res) => {
 /**
  * Update user settings
  * - Updates only provided fields
+ * - Admin changes are global, user changes are local
  */
 export const updateSettings = async (req, res) => {
   try {
@@ -143,7 +179,6 @@ export const updateSettings = async (req, res) => {
       const updates = {};
       if (customAreas !== undefined) {
         updates.customAreas = customAreas;
-        // Force Sequelize to recognize JSONB field change
         settings.changed('customAreas', true);
       }
       if (logoUrl !== undefined) updates.logoUrl = logoUrl;
