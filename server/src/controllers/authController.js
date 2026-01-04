@@ -20,11 +20,15 @@ export const register = async (req, res) => {
       });
     }
 
+    // Check if email is configured - if not, skip verification
+    const emailConfigured = process.env.EMAIL_USER && process.env.EMAIL_PASSWORD;
+
     // Generate verification token
     const verificationToken = generateVerificationToken();
     const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
 
-    // Create user (email not verified yet)
+    // Create user
+    // If email not configured, auto-verify the user
     const user = await User.create({
       email,
       password,
@@ -32,28 +36,40 @@ export const register = async (req, res) => {
       hospital,
       specialty,
       role: 'farmaceutico',
-      emailVerified: false,
-      verificationToken,
-      verificationTokenExpires,
+      emailVerified: !emailConfigured, // Auto-verify if no email config
+      verificationToken: emailConfigured ? verificationToken : null,
+      verificationTokenExpires: emailConfigured ? verificationTokenExpires : null,
     });
 
-    // Send verification email
-    const emailResult = await sendVerificationEmail(email, name, verificationToken);
+    // Only send verification email if email is configured
+    if (emailConfigured) {
+      const emailResult = await sendVerificationEmail(email, name, verificationToken);
+      if (!emailResult.success) {
+        console.error('Error sending verification email:', emailResult.error);
+      }
 
-    if (!emailResult.success) {
-      console.error('Error sending verification email:', emailResult.error);
-      // Continuar aunque falle el email (el usuario puede solicitar reenvío)
+      res.status(201).json({
+        success: true,
+        message: 'Usuario registrado. Por favor verifica tu email.',
+        data: {
+          email: user.email,
+          name: user.name,
+          emailSent: emailResult.success,
+        },
+      });
+    } else {
+      // No email configured - user is auto-verified
+      console.log(`✅ Usuario ${email} registrado y verificado automáticamente (email no configurado)`);
+      res.status(201).json({
+        success: true,
+        message: 'Usuario registrado correctamente. Ya puedes iniciar sesión.',
+        data: {
+          email: user.email,
+          name: user.name,
+          autoVerified: true,
+        },
+      });
     }
-
-    res.status(201).json({
-      success: true,
-      message: 'Usuario registrado. Por favor verifica tu email.',
-      data: {
-        email: user.email,
-        name: user.name,
-        emailSent: emailResult.success,
-      },
-    });
   } catch (error) {
     console.error('Register error:', error);
     res.status(500).json({
