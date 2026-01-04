@@ -1029,27 +1029,35 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
         case 'tips': return <div className={`${theme.bg} rounded-xl p-5 border ${theme.border} h-full overflow-auto break-words`}>{commonHeader('tips')}<div className="space-y-2">{drug.patientSections.precautions.map((item,i)=><div key={i} className="flex gap-2"><div className="w-1 h-1 rounded-full mt-1.5 bg-slate-400"></div><EditableText value={item} isEditing={isEditing} multiline onChange={v=>updateArray('precautions',i,v)} className="text-xs text-slate-600 break-words"/></div>)}</div></div>;
         case 'sideEffects': return <div className="grid grid-cols-3 gap-4 h-full"><div className="border-t-4 border-emerald-400 bg-white pt-3">{commonHeader('normal')}<div className="text-[10px] text-slate-500 space-y-1">{drug.patientSections.sideEffects.filter(s=>!s.includes('🟡')).map((s,i)=><EditableText key={i} value={s.replace('🟢','')} isEditing={isEditing} multiline onChange={()=>{}}/>)}</div></div><div className="border-t-4 border-amber-400 bg-white pt-3">{commonHeader('consult')}<div className="text-[10px] text-slate-500 space-y-1">{drug.patientSections.sideEffects.filter(s=>s.includes('🟡')).map((s,i)=><EditableText key={i} value={s.replace('🟡','')} isEditing={isEditing} multiline onChange={()=>{}}/>)}</div></div><div className="border-t-4 border-rose-500 bg-rose-50 pt-3 px-2">{commonHeader('urgency')}<div className="text-[10px] text-rose-800 font-bold space-y-1">{drug.patientSections.alarms.map((s,i)=><div key={i} className="flex"><span className="mr-1">•</span><EditableText value={s} isEditing={isEditing} multiline onChange={v=>updateArray('alarms',i,v)}/></div>)}</div></div></div>;
         case 'custom':
-          const c = customCards.find(x=>x.id===item.id)||{title:'',content:''};
+          const existingCard = customCards.find(x=>x.id===item.id);
+          const c = existingCard || {id: item.id, title:'', content:''};
           const updateCustomCard = (field, value) => {
-            const newCards = customCards.map(card =>
-              card.id === item.id ? {...card, [field]: value} : card
-            );
+            // If card doesn't exist in array, add it; otherwise update it
+            let newCards;
+            if (existingCard) {
+              newCards = customCards.map(card =>
+                card.id === item.id ? {...card, [field]: value} : card
+              );
+            } else {
+              // Card not in array yet, add it with the new value
+              newCards = [...customCards, {...c, [field]: value}];
+            }
             updatePat('customCards', newCards);
           };
           return (
             <div className={`${theme.bg} rounded-xl p-4 border ${theme.border} h-full overflow-auto break-words`}>
               {isEditing ? (
                 <input
-                  value={c.title}
+                  value={c.title || ''}
                   onChange={e => updateCustomCard('title', e.target.value)}
                   className="font-bold bg-transparent border-b-2 border-indigo-300 outline-none w-full mb-2 p-1"
                   placeholder="Título de la tarjeta"
                 />
               ) : (
-                <h4 className="font-bold text-xs uppercase mb-2 break-words">{c.title}</h4>
+                <h4 className="font-bold text-xs uppercase mb-2 break-words">{c.title || 'Sin título'}</h4>
               )}
               <EditableText
-                value={c.content}
+                value={c.content || ''}
                 isEditing={isEditing}
                 multiline
                 onChange={v => updateCustomCard('content', v)}

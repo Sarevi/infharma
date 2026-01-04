@@ -136,10 +136,9 @@ const startServer = async () => {
       process.exit(1);
     }
 
-    // Sync database (development only - use migrations in production)
-    if (process.env.NODE_ENV === 'development') {
-      await syncDatabase(false); // false = don't drop tables
-    }
+    // Sync database (always sync to ensure tables exist)
+    // Uses ALTER mode to add new columns/tables without dropping existing data
+    await syncDatabase(false);
 
     // Start listening
     httpServer.listen(PORT, () => {
