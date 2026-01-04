@@ -5,10 +5,31 @@ import { Op } from 'sequelize';
  * Get all drugs for the current user
  * - Returns user's own drugs
  * - Plus global drugs created by admin users
+ * - Auto-syncs admin drugs to be global
  */
 export const getDrugs = async (req, res) => {
   try {
     const userId = req.user.id;
+
+    // Auto-sync: Mark all admin drugs as global if not already
+    // This ensures backward compatibility for drugs created before isGlobal was implemented
+    const adminUser = await User.findOne({
+      where: {
+        email: { [Op.iLike]: 'admin@infharma.com' }
+      }
+    });
+
+    if (adminUser) {
+      await Drug.update(
+        { isGlobal: true },
+        {
+          where: {
+            userId: adminUser.id,
+            isGlobal: false
+          }
+        }
+      );
+    }
 
     // Get drugs that belong to user OR are global
     const drugs = await Drug.findAll({
@@ -60,8 +81,8 @@ export const createDrug = async (req, res) => {
       patientSections
     } = req.body;
 
-    // Check if user is admin to set isGlobal
-    const isGlobal = userEmail === 'admin@infharma.com';
+    // Check if user is admin to set isGlobal (case insensitive)
+    const isGlobal = userEmail.toLowerCase().trim() === 'admin@infharma.com';
 
     const drug = await Drug.create({
       userId,
@@ -73,7 +94,7 @@ export const createDrug = async (req, res) => {
       type,
       presentation,
       proSections: proSections || [],
-      patientSections: patientSections || { intro: '', admin: [], layout: [] }
+      patientSections: patientSections || { intro: '', admin: [], layout: [], customCards: [] }
     });
 
     res.status(201).json({

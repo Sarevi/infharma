@@ -1252,6 +1252,12 @@ const App = () => {
   };
   const handleSaveDrug = async (d) => {
     try {
+      // Ensure patientSections has all required fields including customCards
+      const defaultPatientSections = { intro: '', admin: [], layout: [], customCards: [] };
+      const patientSections = d.patientSections
+        ? { ...defaultPatientSections, ...d.patientSections }
+        : defaultPatientSections;
+
       const drugData = {
         name: d.name,
         dci: d.dci,
@@ -1260,7 +1266,7 @@ const App = () => {
         type: d.type,
         presentation: d.presentation,
         proSections: d.proSections || [],
-        patientSections: d.patientSections || { intro: '', admin: [], layout: [] }
+        patientSections
       };
 
       // Check if it's a new drug (id starts with 'new-') or existing (UUID)
@@ -1351,7 +1357,7 @@ const App = () => {
         type: '',
         presentation: '',
         proSections: [],
-        patientSections: { intro: '', admin: [], layout: [] }
+        patientSections: { intro: '', admin: [], layout: [], customCards: [] }
       });
     }
     setIsCreating(true);
