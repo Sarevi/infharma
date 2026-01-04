@@ -206,7 +206,72 @@ export const updateSettings = async (req, res) => {
   }
 };
 
+/**
+ * Debug endpoint to check sync status
+ */
+export const debugSync = async (req, res) => {
+  try {
+    // Find admin user
+    const adminUser = await User.findOne({
+      where: {
+        email: { [Op.iLike]: 'admin@infharma.com' }
+      }
+    });
+
+    let adminData = null;
+    if (adminUser) {
+      const adminSettings = await UserSettings.findOne({
+        where: { userId: adminUser.id }
+      });
+
+      const adminDrugs = await Drug.findAll({
+        where: { userId: adminUser.id }
+      });
+
+      adminData = {
+        userId: adminUser.id,
+        email: adminUser.email,
+        customAreas: adminSettings?.customAreas || 'NO SETTINGS FOUND',
+        drugsCount: adminDrugs.length,
+        drugs: adminDrugs.map(d => ({
+          name: d.name,
+          system: d.system,
+          subArea: d.subArea,
+          isGlobal: d.isGlobal
+        }))
+      };
+    }
+
+    // Current user data
+    const currentSettings = await UserSettings.findOne({
+      where: { userId: req.user.id }
+    });
+
+    const currentDrugs = await Drug.findAll({
+      where: { userId: req.user.id }
+    });
+
+    res.json({
+      success: true,
+      currentUser: {
+        id: req.user.id,
+        email: req.user.email,
+        customAreas: currentSettings?.customAreas || 'NO SETTINGS FOUND',
+        drugsCount: currentDrugs.length
+      },
+      adminUser: adminData || 'ADMIN NOT FOUND'
+    });
+  } catch (error) {
+    console.error('Debug error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
 export default {
   getSettings,
   updateSettings,
+  debugSync,
 };
