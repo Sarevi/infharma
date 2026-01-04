@@ -56,7 +56,7 @@ const Drug = sequelize.define('Drug', {
   patientSections: {
     type: DataTypes.JSONB,
     allowNull: true,
-    defaultValue: { intro: '', admin: [], layout: [] },
+    defaultValue: { intro: '', admin: [], layout: [], customCards: [] },
     comment: 'Patient information sections (JSON object)',
   },
 }, {

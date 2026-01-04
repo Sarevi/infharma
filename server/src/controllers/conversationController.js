@@ -105,8 +105,8 @@ export const createConversation = async (req, res) => {
       const contactRequest = await ContactRequest.findOne({
         where: {
           [Op.or]: [
-            { senderId: creatorId, receiverId: participantId },
-            { senderId: participantId, receiverId: creatorId },
+            { sender_id: creatorId, receiver_id: participantId },
+            { sender_id: participantId, receiver_id: creatorId },
           ],
           status: 'accepted',
         },
