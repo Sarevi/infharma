@@ -1289,11 +1289,55 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   );
 };
 
+// --- DISCLAIMER MODAL ---
+const DisclaimerModal = ({ onAccept }) => {
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[1000] p-4">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="text-white" size={28} />
+            <h2 className="text-xl font-bold text-white">Aviso Legal y de Uso</h2>
+          </div>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1 text-slate-700 text-sm leading-relaxed space-y-4">
+          <p>
+            Esta aplicación ha sido desarrollada como herramienta de apoyo informativo para profesionales sanitarios en el ámbito de la farmacia hospitalaria.
+          </p>
+          <p>
+            La información proporcionada tiene carácter orientativo y <strong>no sustituye en ningún caso</strong> el juicio clínico, la experiencia profesional ni la consulta de protocolos oficiales, fichas técnicas autorizadas, guías clínicas vigentes o normativa institucional aplicable en cada centro.
+          </p>
+          <p>
+            El uso de esta aplicación no establece relación asistencial, ni implica responsabilidad clínica, terapéutica o legal por parte de los desarrolladores, autores o entidades colaboradoras.
+          </p>
+          <p>
+            Las decisiones relacionadas con la prescripción, preparación, dispensación o administración de medicamentos deben ser adoptadas <strong>exclusivamente por profesionales sanitarios cualificados</strong>, bajo su responsabilidad y conforme a la legislación y procedimientos vigentes.
+          </p>
+          <p>
+            El desarrollador no garantiza la ausencia de errores, omisiones o desactualización de los contenidos, por lo que se recomienda <strong>verificar siempre la información relevante</strong> antes de su aplicación en la práctica clínica.
+          </p>
+          <p className="font-medium text-slate-800 bg-amber-50 p-3 rounded-lg border border-amber-200">
+            Al acceder y utilizar esta aplicación, el usuario acepta expresamente las condiciones descritas en este aviso legal.
+          </p>
+        </div>
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200">
+          <button
+            onClick={onAccept}
+            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 px-6 rounded-xl hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            Acepto las condiciones de uso
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- APP ---
 const App = () => {
   const { isAuthenticated, user, logout: authLogout, updateProfile } = useAuth();
-  const { totalUnreadCount, pendingRequests, socket } = useChat(); 
-  const [view, setView] = useState('home'); 
+  const { totalUnreadCount, pendingRequests, socket } = useChat();
+  const [view, setView] = useState('home');
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -1319,6 +1363,7 @@ const App = () => {
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameData, setRenameData] = useState({ type: 'area', currentName: '', areaName: '', pathologyName: '' });
   const [autoSaveStatus, setAutoSaveStatus] = useState('saved'); // 'saved', 'saving', 'error'
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const autoSaveTimeoutRef = useRef(null);
   const lastSavedDrugRef = useRef(null);
 
@@ -1458,6 +1503,26 @@ const App = () => {
     };
     loadDrugs();
   }, [isAuthenticated]);
+
+  // Check if user has accepted disclaimer (first time login)
+  useEffect(() => {
+    if (isAuthenticated && user?.email) {
+      const disclaimerKey = `infharma_disclaimer_accepted_${user.email}`;
+      const hasAccepted = localStorage.getItem(disclaimerKey);
+      if (!hasAccepted) {
+        setShowDisclaimer(true);
+      }
+    }
+  }, [isAuthenticated, user]);
+
+  // Handle disclaimer acceptance
+  const handleAcceptDisclaimer = () => {
+    if (user?.email) {
+      const disclaimerKey = `infharma_disclaimer_accepted_${user.email}`;
+      localStorage.setItem(disclaimerKey, 'true');
+      setShowDisclaimer(false);
+    }
+  };
 
   // Listen for real-time drug updates from admin
   useEffect(() => {
@@ -2331,6 +2396,9 @@ const App = () => {
 
       {/* Modal de configuración inicial obligatorio */}
       <InitialSetupModal isOpen={isAuthenticated && showInitialSetup} onComplete={handleCompleteInitialSetup} user={user}/>
+
+      {/* Disclaimer modal - solo primera vez */}
+      {showDisclaimer && <DisclaimerModal onAccept={handleAcceptDisclaimer} />}
 
       <SettingsModal isOpen={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings}/>
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
