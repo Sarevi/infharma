@@ -31,3 +31,11 @@ export const deleteDrug = async (id) => {
   const response = await apiClient.delete(`/drugs/${id}`);
   return response.data;
 };
+
+/**
+ * Reset a drug to original version (deletes user's personal copy)
+ */
+export const resetDrug = async (id) => {
+  const response = await apiClient.post(`/drugs/${id}/reset`);
+  return response.data;
+};
