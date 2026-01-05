@@ -1627,6 +1627,11 @@ const App = () => {
         hospitalName: newSettings.hospitalName,
         pharmacistName: newSettings.pharmacistName,
       });
+      // Also update user profile so dashboard shows updated values
+      await updateProfile({
+        name: newSettings.pharmacistName,
+        hospital: newSettings.hospitalName
+      });
     } catch (error) {
       console.error('Error saving settings:', error);
     }
