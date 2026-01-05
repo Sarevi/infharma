@@ -2536,7 +2536,7 @@ const App = () => {
                <div className="flex gap-2"></div>
             </header>
             <div className="flex-1 overflow-y-auto bg-slate-50">
-               {view === 'home' ? (
+               {view === 'home' || !selectedDrug ? (
                  <div className="max-w-6xl mx-auto pt-12 px-8 pb-20">
                     <h1 className="text-4xl font-extrabold text-slate-900 mb-2">HOSPITAL {user?.hospital || settings.hospitalName || 'Hospital'}</h1>
                     <p className="text-slate-500 mb-10">Panel de Control • {user?.name || settings.pharmacistName || 'Usuario'}</p>
