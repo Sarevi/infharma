@@ -937,18 +937,53 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
 
 const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onResize, onResizeHeight, onDelete, onDragStart, onDrop, onDragEnter, onDragEnd, index, color, onColorChange, isDragging, isDragOver }) => {
   const [isActive, setIsActive] = useState(false);
+  const cardRef = useRef(null);
   const spanClasses = { 3: 'col-span-3', 4: 'col-span-4', 6: 'col-span-6', 8: 'col-span-8', 9: 'col-span-9', 12: 'col-span-12' };
   const heightClasses = { 1: 'h-auto', 2: 'min-h-[16rem]', 3: 'min-h-[24rem]', 4: 'min-h-[32rem]', 5: 'min-h-[40rem]' };
 
+  // Apply text formatting using execCommand
+  const applyFormat = (command) => {
+    // Save current selection
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      document.execCommand(command, false, null);
+    }
+  };
+
   return (
     <div
+      ref={cardRef}
       className={`${spanClasses[colSpan]} relative transition-all duration-200 ${isEditing ? 'cursor-pointer' : ''} ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isDragOver ? 'border-l-4 border-indigo-500 pl-2' : ''}`}
       onClick={() => isEditing && setIsActive(!isActive)}
       draggable={isEditing} onDragStart={(e) => isEditing && onDragStart(e, index)} onDragEnter={(e) => isEditing && onDragEnter(e, index)} onDragEnd={onDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={(e) => isEditing && onDrop(e, index)}
     >
       {isEditing && isActive && (
-        <div className="absolute -top-20 left-1/2 -translate-x-1/2 flex bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 items-center shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+        <div className="absolute -top-24 left-1/2 -translate-x-1/2 flex bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 items-center shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
              <div className="mr-3 text-slate-400 cursor-grab hover:text-white rounded p-1" title="Arrastrar"><GripVertical size={18}/></div>
+             <div className="w-px bg-slate-600 h-8 mx-3"></div>
+
+             {/* Text formatting buttons */}
+             <div className="flex flex-col mr-3">
+               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Texto</span>
+               <div className="flex items-center gap-1">
+                 <button
+                   onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyFormat('bold'); }}
+                   className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                   title="Negrita (selecciona texto primero)"
+                 ><Bold size={14}/></button>
+                 <button
+                   onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyFormat('italic'); }}
+                   className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                   title="Cursiva (selecciona texto primero)"
+                 ><Italic size={14}/></button>
+                 <button
+                   onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyFormat('underline'); }}
+                   className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
+                   title="Subrayado (selecciona texto primero)"
+                 ><Underline size={14}/></button>
+               </div>
+             </div>
+
              <div className="w-px bg-slate-600 h-8 mx-3"></div>
 
              <div className="flex flex-col mr-3">
