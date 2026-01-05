@@ -423,7 +423,7 @@ const CalculatorsModal = ({ isOpen, onClose }) => {
 };
 
 // --- SOLUCIÓN DEFINITIVA AL BUG DE ESCRITURA ---
-const EditableText = ({ value, onChange, isEditing, className, multiline = false, placeholder = "" }) => {
+const EditableText = ({ value, onChange, isEditing, className, multiline = false, placeholder = "", showToolbar = false }) => {
   const contentEditableRef = useRef(null);
   const [isFocused, setIsFocused] = useState(false);
 
@@ -459,7 +459,8 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
 
   return (
     <div className="relative group/edit w-full">
-      {isEditing && isFocused && (
+      {/* Toolbar only shows when showToolbar=true (for protocol editor) */}
+      {showToolbar && isEditing && isFocused && (
         <div className="flex items-center gap-1 bg-slate-900 text-white rounded-lg shadow-2xl absolute -top-10 left-0 z-[150] px-3 py-2 animate-in fade-in zoom-in-95 duration-100 border border-slate-700" onMouseDown={(e) => e.preventDefault()}>
           <button onMouseDown={(e) => handleToolbarAction(e, 'bold')} className="hover:bg-slate-700 rounded px-1.5 py-1 transition-colors" title="Negrita"><Bold size={14}/></button>
           <button onMouseDown={(e) => handleToolbarAction(e, 'italic')} className="hover:bg-slate-700 rounded px-1.5 py-1 transition-colors" title="Cursiva"><Italic size={14}/></button>
@@ -470,8 +471,6 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
         </div>
       )}
 
-      {/* AQUÍ ESTÁ LA SOLUCIÓN: Eliminamos dangerouslySetInnerHTML en el render de edición.
-          El contenido se inicializa vía useEffect y se mantiene vía onInput nativo. */}
       <div
         ref={contentEditableRef}
         contentEditable={true}
@@ -943,7 +942,6 @@ const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onR
 
   // Apply text formatting using execCommand
   const applyFormat = (command) => {
-    // Save current selection
     const selection = window.getSelection();
     if (selection && selection.rangeCount > 0) {
       document.execCommand(command, false, null);
@@ -957,68 +955,66 @@ const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onR
       onClick={() => isEditing && setIsActive(!isActive)}
       draggable={isEditing} onDragStart={(e) => isEditing && onDragStart(e, index)} onDragEnter={(e) => isEditing && onDragEnter(e, index)} onDragEnd={onDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={(e) => isEditing && onDrop(e, index)}
     >
+      {/* Popup flotante con posición fija para evitar cortes */}
       {isEditing && isActive && (
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 flex bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 items-center shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 flex bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 items-center shadow-2xl z-[200] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
              <div className="mr-3 text-slate-400 cursor-grab hover:text-white rounded p-1" title="Arrastrar"><GripVertical size={18}/></div>
-             <div className="w-px bg-slate-600 h-8 mx-3"></div>
+             <div className="w-px bg-slate-600 h-8 mx-2"></div>
 
              {/* Text formatting buttons */}
-             <div className="flex flex-col mr-3">
-               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Texto</span>
+             <div className="flex flex-col mr-2">
+               <span className="text-[9px] text-slate-400 uppercase mb-1 font-medium">Texto</span>
                <div className="flex items-center gap-1">
                  <button
                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyFormat('bold'); }}
                    className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
-                   title="Negrita (selecciona texto primero)"
+                   title="Negrita"
                  ><Bold size={14}/></button>
                  <button
                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyFormat('italic'); }}
                    className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
-                   title="Cursiva (selecciona texto primero)"
+                   title="Cursiva"
                  ><Italic size={14}/></button>
                  <button
                    onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); applyFormat('underline'); }}
                    className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors"
-                   title="Subrayado (selecciona texto primero)"
+                   title="Subrayado"
                  ><Underline size={14}/></button>
                </div>
              </div>
 
-             <div className="w-px bg-slate-600 h-8 mx-3"></div>
+             <div className="w-px bg-slate-600 h-8 mx-2"></div>
 
-             <div className="flex flex-col mr-3">
-               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Color</span>
-               <div className="flex gap-1.5">{Object.keys(CARD_THEMES).map(k => <button key={k} onClick={() => onColorChange(k)} className={`w-5 h-5 rounded-full ${CARD_THEMES[k].accent} hover:scale-125 transition-transform ${color === k ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800' : 'opacity-70 hover:opacity-100'}`} title={CARD_THEMES[k].name}/>)}</div>
+             <div className="flex flex-col mr-2">
+               <span className="text-[9px] text-slate-400 uppercase mb-1 font-medium">Color</span>
+               <div className="flex gap-1">{Object.keys(CARD_THEMES).map(k => <button key={k} onClick={() => onColorChange(k)} className={`w-4 h-4 rounded-full ${CARD_THEMES[k].accent} hover:scale-125 transition-transform ${color === k ? 'ring-2 ring-white ring-offset-1 ring-offset-slate-800' : 'opacity-70 hover:opacity-100'}`} title={CARD_THEMES[k].name}/>)}</div>
              </div>
 
-             <div className="w-px bg-slate-600 h-8 mx-3"></div>
+             <div className="w-px bg-slate-600 h-8 mx-2"></div>
 
-             <div className="flex flex-col mr-3">
-               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Ancho</span>
-               <div className="flex items-center gap-2">
-                 <button onClick={() => onResize(-1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={colSpan <= 3}><Minus size={14}/></button>
-                 <span className="text-sm font-mono font-bold w-6 text-center">{colSpan}</span>
-                 <button onClick={() => onResize(1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={colSpan >= 12}><Plus size={14}/></button>
+             <div className="flex flex-col mr-2">
+               <span className="text-[9px] text-slate-400 uppercase mb-1 font-medium">Ancho</span>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => onResize(-1)} className="p-1 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={colSpan <= 3}><Minus size={12}/></button>
+                 <span className="text-xs font-mono font-bold w-5 text-center">{colSpan}</span>
+                 <button onClick={() => onResize(1)} className="p-1 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={colSpan >= 12}><Plus size={12}/></button>
                </div>
              </div>
 
-             <div className="w-px bg-slate-600 h-8 mx-3"></div>
+             <div className="w-px bg-slate-600 h-8 mx-2"></div>
 
-             <div className="flex flex-col mr-3">
-               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Alto</span>
-               <div className="flex items-center gap-2">
-                 <button onClick={() => onResizeHeight(-1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={heightLevel <= 1}><Minus size={14}/></button>
-                 <span className="text-sm font-mono font-bold w-5 text-center">{heightLevel}</span>
-                 <button onClick={() => onResizeHeight(1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={heightLevel >= 5}><Plus size={14}/></button>
+             <div className="flex flex-col mr-2">
+               <span className="text-[9px] text-slate-400 uppercase mb-1 font-medium">Alto</span>
+               <div className="flex items-center gap-1">
+                 <button onClick={() => onResizeHeight(-1)} className="p-1 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={heightLevel <= 1}><Minus size={12}/></button>
+                 <span className="text-xs font-mono font-bold w-4 text-center">{heightLevel}</span>
+                 <button onClick={() => onResizeHeight(1)} className="p-1 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={heightLevel >= 5}><Plus size={12}/></button>
                </div>
              </div>
 
-             <div className="w-px bg-slate-600 h-8 mx-3"></div>
+             <div className="w-px bg-slate-600 h-8 mx-2"></div>
 
-             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-lg transition-colors" title="Eliminar tarjeta"><Trash2 size={18}/></button>
-
-             {/* Arrow pointing to the card */}
-             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-800 rotate-45 border-r border-b border-slate-700"></div>
+             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-lg transition-colors" title="Eliminar tarjeta"><Trash2 size={16}/></button>
         </div>
       )}
       <div className={`h-full flex flex-col transition-all ${heightClasses[heightLevel]} ${isEditing ? `border-2 ${isActive ? 'border-indigo-500 shadow-lg' : 'border-dashed border-slate-300'} rounded-xl` : ''}`}>
@@ -2075,6 +2071,7 @@ const App = () => {
             value={section.content || ''}
             isEditing={isEditing}
             multiline
+            showToolbar={true}
             onChange={v => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s => s.id === section.id ? {...s, content: v} : s)})}
             className="text-sm text-slate-700 leading-relaxed block w-full"
           />
@@ -2120,7 +2117,31 @@ const App = () => {
 
   return (
     <>
-      <style>{`@media print { @page { size: A4; margin: 0; } body { background: white; } .no-print { display: none !important; } aside, header { display: none !important; } .a4-container { width: 100% !important; height: 100% !important; box-shadow: none !important; margin: 0 !important; } button { display: none !important; } input, textarea { border: none !important; } }`}</style>
+      <style>{`@media print {
+        @page { size: A4; margin: 10mm; }
+        body { background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .no-print { display: none !important; }
+        aside, header { display: none !important; }
+        #pdf-content {
+          width: 100% !important;
+          max-width: 190mm !important;
+          min-height: auto !important;
+          height: auto !important;
+          box-shadow: none !important;
+          margin: 0 auto !important;
+          padding: 0 !important;
+          overflow: visible !important;
+        }
+        #pdf-content > .grid {
+          gap: 8px !important;
+        }
+        button { display: none !important; }
+        input, textarea { border: none !important; }
+        .col-span-3, .col-span-4, .col-span-6, .col-span-8, .col-span-9, .col-span-12 {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+      }`}</style>
 
       {/* Modal de configuración inicial obligatorio */}
       <InitialSetupModal isOpen={isAuthenticated && showInitialSetup} onComplete={handleCompleteInitialSetup} user={user}/>
