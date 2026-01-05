@@ -1011,8 +1011,7 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
   );
 };
 
-const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onResize, onResizeHeight, onDelete, onDragStart, onDrop, onDragEnter, onDragEnd, index, color, onColorChange, isDragging, isDragOver }) => {
-  const [isActive, setIsActive] = useState(false);
+const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onResize, onResizeHeight, onDelete, onDragStart, onDrop, onDragEnter, onDragEnd, index, color, onColorChange, isDragging, isDragOver, isActive, onActivate }) => {
   const cardRef = useRef(null);
   const spanClasses = { 3: 'col-span-3', 4: 'col-span-4', 6: 'col-span-6', 8: 'col-span-8', 9: 'col-span-9', 12: 'col-span-12' };
   const heightClasses = { 1: 'h-auto', 2: 'min-h-[16rem]', 3: 'min-h-[24rem]', 4: 'min-h-[32rem]', 5: 'min-h-[40rem]' };
@@ -1029,7 +1028,7 @@ const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onR
     <div
       ref={cardRef}
       className={`${spanClasses[colSpan]} relative transition-all duration-200 ${isEditing ? 'cursor-pointer' : ''} ${isDragging ? 'opacity-40 scale-95' : 'opacity-100'} ${isDragOver ? 'border-l-4 border-indigo-500 pl-2' : ''}`}
-      onClick={() => isEditing && setIsActive(!isActive)}
+      onClick={() => isEditing && onActivate && onActivate(index)}
       draggable={isEditing} onDragStart={(e) => isEditing && onDragStart(e, index)} onDragEnter={(e) => isEditing && onDragEnter(e, index)} onDragEnd={onDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={(e) => isEditing && onDrop(e, index)}
     >
       {/* Popup flotante con posición fija para evitar cortes */}
@@ -1119,6 +1118,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [iconPicker, setIconPicker] = useState({ isOpen: false, targetIndex: null });
   const [showCardTemplates, setShowCardTemplates] = useState(false);
+  const [activeCardIndex, setActiveCardIndex] = useState(null);
 
   const layout = drug.patientSections.layout || [];
   const customCards = drug.patientSections.customCards || [];
@@ -1212,6 +1212,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
                   <input
                     value={c.title || ''}
                     onChange={e => updateCustomCard('title', e.target.value)}
+                    onClick={e => e.stopPropagation()}
                     className="font-bold bg-transparent border-b-2 border-indigo-300 outline-none w-full uppercase text-[10px] tracking-widest"
                     placeholder="Título de la tarjeta"
                   />
@@ -1237,11 +1238,11 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   };
 
   return (
-    <div className="bg-slate-100 p-8 flex justify-center overflow-y-auto h-full" onClick={()=>setIconPicker({isOpen:false, targetIndex:null})}>
+    <div className="bg-slate-100 p-8 flex justify-center overflow-y-auto h-full" onClick={()=>{setIconPicker({isOpen:false, targetIndex:null}); setActiveCardIndex(null);}}>
        <ConfirmModal isOpen={confirmModal.isOpen} onClose={()=>setConfirmModal({...confirmModal,isOpen:false})} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message}/>
-       <div id="pdf-content" className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0">
+       <div id="pdf-content" className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-start border-b-4 border-indigo-600 pb-4 mb-6"><div className="flex gap-4 items-center"><div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 text-indigo-600">{settings.logoUrl?<img src={settings.logoUrl} className="w-full h-full object-contain p-2"/>:<Stethoscope size={32}/>}</div><div><h1 className="text-2xl font-black text-slate-900 tracking-tight">{drug.name}</h1><p className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">Guía de Inicio</p></div></div><div className="text-right"><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{settings.hospitalName}</div></div></div>
-          <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)}>{renderCardContent(item, index)}</ResizableCard>))}</div>
+          <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)} isActive={activeCardIndex===index} onActivate={(idx)=>setActiveCardIndex(activeCardIndex===idx?null:idx)}>{renderCardContent(item, index)}</ResizableCard>))}</div>
           {isEditing && <div className="mb-6 flex justify-center">
             <button onClick={() => setShowCardTemplates(true)} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs hover:bg-indigo-100 transition-colors">
               <Plus size={16} className="mr-2"/> AÑADIR TARJETA
