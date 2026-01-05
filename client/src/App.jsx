@@ -1152,7 +1152,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
 // --- APP ---
 const App = () => {
   const { isAuthenticated, user, logout: authLogout, updateProfile } = useAuth();
-  const { totalUnreadCount, pendingRequests } = useChat(); 
+  const { totalUnreadCount, pendingRequests, socket } = useChat(); 
   const [view, setView] = useState('home'); 
   const [selectedDrug, setSelectedDrug] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -1318,6 +1318,53 @@ const App = () => {
     };
     loadDrugs();
   }, [isAuthenticated]);
+
+  // Listen for real-time drug updates from admin
+  useEffect(() => {
+    if (!socket) return;
+
+    const handleDrugUpdated = ({ drugId, drug }) => {
+      console.log('📢 Drug updated by admin:', drug.name);
+      setData(prevData => {
+        // Check if user has their own copy of this drug (don't override user's personal copy)
+        const existingDrug = prevData.find(d => d.id === drugId || d.originalDrugId === drugId);
+        if (existingDrug && existingDrug.originalDrugId) {
+          // User has their own copy, don't update
+          return prevData;
+        }
+        // Update the drug in the list
+        return prevData.map(d => d.id === drugId ? { ...drug, hasOriginal: false } : d);
+      });
+      // Also update selectedDrug if it's the one being updated
+      setSelectedDrug(prev => {
+        if (prev && prev.id === drugId && !prev.originalDrugId) {
+          return { ...drug, hasOriginal: false };
+        }
+        return prev;
+      });
+    };
+
+    const handleDrugCreated = ({ drug }) => {
+      console.log('📢 New drug created by admin:', drug.name);
+      setData(prevData => [...prevData, drug]);
+    };
+
+    const handleDrugDeleted = ({ drugId }) => {
+      console.log('📢 Drug deleted by admin:', drugId);
+      setData(prevData => prevData.filter(d => d.id !== drugId && d.originalDrugId !== drugId));
+      setSelectedDrug(prev => (prev && (prev.id === drugId || prev.originalDrugId === drugId)) ? null : prev);
+    };
+
+    socket.on('drug:updated', handleDrugUpdated);
+    socket.on('drug:created', handleDrugCreated);
+    socket.on('drug:deleted', handleDrugDeleted);
+
+    return () => {
+      socket.off('drug:updated', handleDrugUpdated);
+      socket.off('drug:created', handleDrugCreated);
+      socket.off('drug:deleted', handleDrugDeleted);
+    };
+  }, [socket]);
 
   // Load settings from API when authenticated
   useEffect(() => {

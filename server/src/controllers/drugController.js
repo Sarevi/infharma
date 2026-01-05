@@ -146,6 +146,16 @@ export const createDrug = async (req, res) => {
       patientSections: patientSections || { intro: '', admin: [], layout: [], customCards: [] }
     });
 
+    // Emit real-time notification if admin creates a global drug
+    if (isGlobal) {
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('drug:created', {
+          drug: { ...drug.toJSON(), hasOriginal: false }
+        });
+      }
+    }
+
     res.status(201).json({
       success: true,
       message: isGlobal ? 'Medicamento global creado' : 'Medicamento creado',
@@ -209,6 +219,15 @@ export const updateDrug = async (req, res) => {
         proSections: proSections !== undefined ? proSections : drug.proSections,
         patientSections: patientSections !== undefined ? patientSections : drug.patientSections
       });
+
+      // Emit real-time update to all connected clients
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('drug:updated', {
+          drugId: drug.id,
+          drug: { ...drug.toJSON(), hasOriginal: false }
+        });
+      }
 
       return res.json({
         success: true,
@@ -367,11 +386,19 @@ export const deleteDrug = async (req, res) => {
 
     // Admin can delete global drugs
     if (isAdmin && drug.isGlobal) {
+      const drugId = drug.id;
       // Also delete all user copies of this drug
       await Drug.destroy({
         where: { originalDrugId: drug.id }
       });
       await drug.destroy();
+
+      // Emit real-time notification to all clients
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('drug:deleted', { drugId });
+      }
+
       return res.json({
         success: true,
         message: 'Medicamento global eliminado'
