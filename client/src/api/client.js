@@ -1,6 +1,19 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// Auto-detect API URL: use env variable, or relative path (works in production), or detect from hostname
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  // In production served from same server, use relative path
+  if (window.location.port === '3001' || window.location.port === '') {
+    return '/api';
+  }
+  // In development with different port, connect to server
+  return `${window.location.protocol}//${window.location.hostname}:3001/api`;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,

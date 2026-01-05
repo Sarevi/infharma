@@ -52,26 +52,9 @@ app.use(helmet({
 app.use(compression());
 app.use(morgan(process.env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 
-// CORS configuration
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  'https://infharma.com',
-  'https://www.infharma.com',
-  'http://localhost:5173',
-  'http://localhost:5174'
-].filter(Boolean); // Remove undefined values
-
+// CORS configuration - Allow all origins for local network access
 const corsOptions = {
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: true, // Allow all origins (for local network deployment)
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -140,14 +123,15 @@ const startServer = async () => {
     // Uses ALTER mode to add new columns/tables without dropping existing data
     await syncDatabase(false);
 
-    // Start listening
-    httpServer.listen(PORT, () => {
+    // Start listening on all interfaces (0.0.0.0) for network access
+    httpServer.listen(PORT, '0.0.0.0', () => {
       console.log('');
       console.log('═══════════════════════════════════════════════════════');
       console.log(`🚀 InFHarma Backend Server`);
       console.log('═══════════════════════════════════════════════════════');
       console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🌐 Server running on: http://localhost:${PORT}`);
+      console.log(`🌐 Server running on: http://0.0.0.0:${PORT}`);
+      console.log(`🌐 Access from network: http://<YOUR-IP>:${PORT}`);
       console.log(`💾 Database: PostgreSQL (${process.env.DB_NAME})`);
       console.log(`🔌 Socket.IO: Enabled`);
       console.log(`⚡ API Health: http://localhost:${PORT}/health`);
