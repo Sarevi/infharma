@@ -888,7 +888,7 @@ const LoginPage = () => {
 
 // --- COMPONENTES PRINCIPALES ---
 const ProSection = ({ section, children, onRemove, isEditing, updateContent }) => {
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   if (section.type === 'alert') {
     const isDanger = section.variant === 'danger';
@@ -1296,7 +1296,7 @@ const App = () => {
         try {
           const response = await settingsAPI.getSettings();
           if (response.success && response.settings) {
-            const { customAreas: dbCustomAreas, logoUrl, primaryColor } = response.settings;
+            const { customAreas: dbCustomAreas, logoUrl, primaryColor, hospitalName, pharmacistName } = response.settings;
 
             // Update customAreas from database
             if (dbCustomAreas) {
@@ -1308,6 +1308,8 @@ const App = () => {
               ...prevSettings,
               logoUrl: logoUrl || prevSettings.logoUrl,
               primaryColor: primaryColor || prevSettings.primaryColor,
+              hospitalName: hospitalName || prevSettings.hospitalName,
+              pharmacistName: pharmacistName || prevSettings.pharmacistName,
             }));
           }
         } catch (error) {
