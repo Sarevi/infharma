@@ -448,7 +448,13 @@ const EditableText = ({ value, onChange, isEditing, className, multiline = false
   };
 
   if (!isEditing) {
-    return <div className={`whitespace-pre-wrap ${className || ''}`} dangerouslySetInnerHTML={{ __html: value || placeholder }}/>;
+    // Convert single line breaks to spaces, keep double line breaks as paragraph breaks
+    // This makes it work like markdown: single enter = same paragraph, double enter = new paragraph
+    const processedValue = (value || placeholder)
+      .replace(/<br\s*\/?>\s*<br\s*\/?>/gi, '{{PARAGRAPH}}')  // Mark double breaks
+      .replace(/<br\s*\/?>/gi, ' ')                            // Single breaks become spaces
+      .replace(/{{PARAGRAPH}}/g, '<br><br>');                  // Restore paragraph breaks
+    return <div className={`${className || ''}`} dangerouslySetInnerHTML={{ __html: processedValue }}/>;
   }
 
   return (
@@ -882,25 +888,33 @@ const LoginPage = () => {
 
 // --- COMPONENTES PRINCIPALES ---
 const ProSection = ({ section, children, onRemove, isEditing, updateContent }) => {
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   if (section.type === 'alert') {
     const isDanger = section.variant === 'danger';
     return (
-      <div className="mb-16 relative group break-inside-avoid">
+      <div className="mb-8 relative group break-inside-avoid">
          {isEditing && <button onClick={onRemove} className="absolute -right-2 -top-2 p-1.5 bg-white border shadow-sm rounded-full text-slate-400 hover:text-rose-500 z-10"><Trash2 size={14}/></button>}
-         <div className={`${isDanger ? 'bg-rose-50 border-rose-500 text-rose-900' : 'bg-amber-50 border-amber-500 text-amber-900'} border-l-4 p-4 rounded-r-md flex gap-3`}>
-            <AlertTriangle size={20} className="mt-0.5 flex-shrink-0"/>
-            <div className="w-full">
-               {isEditing ? <EditableText value={section.title} onChange={(v) => updateContent('title', v)} isEditing={isEditing} className="font-bold w-full mb-1"/> : <h3 className="font-bold uppercase tracking-wide mb-1" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
-               <div className="text-sm leading-relaxed font-medium">{children}</div>
+         <div className={`${isDanger ? 'bg-rose-50 border-rose-500 text-rose-900' : 'bg-amber-50 border-amber-500 text-amber-900'} border-l-4 p-4 rounded-r-md`}>
+            <div className="flex gap-3 cursor-pointer" onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}>
+              <AlertTriangle size={20} className="mt-0.5 flex-shrink-0"/>
+              <div className="w-full flex items-center justify-between">
+                {isEditing ? <EditableText value={section.title} onChange={(v) => updateContent('title', v)} isEditing={isEditing} className="font-bold w-full mb-1"/> : <h3 className="font-bold uppercase tracking-wide" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
+                {!isEditing && (isCollapsed ? <ChevronRight size={20} className="flex-shrink-0"/> : <ChevronDown size={20} className="flex-shrink-0"/>)}
+              </div>
             </div>
+            {(!isCollapsed || isEditing) && <div className="text-sm leading-relaxed font-medium mt-2 ml-8">{children}</div>}
          </div>
       </div>
     );
   }
   return (
-    <div className="mb-16 pl-2 relative group break-inside-avoid">
+    <div className="mb-8 pl-2 relative group break-inside-avoid">
       {isEditing && <button onClick={onRemove} className="absolute -left-8 top-0 p-1.5 text-slate-300 hover:text-rose-500"><Trash2 size={14} /></button>}
-      <div className="flex items-center mb-3 border-b border-slate-100 pb-2">
+      <div
+        className={`flex items-center justify-between border-b border-slate-100 pb-2 ${!isEditing ? 'cursor-pointer hover:bg-slate-50 -mx-2 px-2 rounded' : ''}`}
+        onClick={() => !isEditing && setIsCollapsed(!isCollapsed)}
+      >
          {isEditing ? (
           <div className="flex items-center w-full">
             <FileText size={24} className="text-slate-400 mr-2"/>
@@ -908,12 +922,15 @@ const ProSection = ({ section, children, onRemove, isEditing, updateContent }) =
               value={section.title}
               onChange={(v) => updateContent('title', v)}
               isEditing={isEditing}
-              className="text-2xl font-bold text-slate-800 w-full"
+              className="text-xl font-bold text-slate-800 w-full"
             />
           </div>
-        ) : <h3 className="text-2xl font-bold text-slate-800 flex items-center tracking-tight" dangerouslySetInnerHTML={{__html: section.title}}></h3>}
+        ) : (
+          <h3 className="text-xl font-bold text-slate-800 flex items-center tracking-tight" dangerouslySetInnerHTML={{__html: section.title}}></h3>
+        )}
+        {!isEditing && (isCollapsed ? <ChevronRight size={20} className="text-slate-400"/> : <ChevronDown size={20} className="text-slate-400"/>)}
       </div>
-      <div className="text-slate-700 text-sm leading-relaxed pl-1">{children}</div>
+      {(!isCollapsed || isEditing) && <div className="text-slate-700 text-sm leading-relaxed pl-1 mt-3">{children}</div>}
     </div>
   );
 };
@@ -1432,7 +1449,7 @@ const App = () => {
   };
 
   const handleResetDrug = async (drug) => {
-    if(!window.confirm("¿Restaurar a la versión original del administrador? Se perderán tus cambios personales.")) {
+    if(!window.confirm("¿Seguro que quieres restaurar la versión original de este medicamento? Se perderán todos tus cambios personales.")) {
       return;
     }
     try {
