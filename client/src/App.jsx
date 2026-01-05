@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import html2pdf from 'html2pdf.js';
+import ReactQuill from 'react-quill';
+import 'react-quill/dist/quill.snow.css';
 import {
   // Iconos Generales de UI
   Search, ChevronRight, ChevronDown, X, Plus, Minus, Trash2, Save,
@@ -168,6 +170,81 @@ const INITIAL_SETTINGS = { hospitalName: 'Hospital Universitario General', pharm
 
 // --- COMPONENTES UI ---
 const Badge = ({ children, className = "" }) => <span className={`px-2.5 py-0.5 rounded-md text-[10px] uppercase tracking-wide font-bold ${className}`}>{children}</span>;
+
+// --- EDITOR RICO TIPO WORD ---
+const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", className = "" }) => {
+  const quillModules = useMemo(() => ({
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
+      ['clean']
+    ],
+  }), []);
+
+  const quillFormats = [
+    'header', 'bold', 'italic', 'underline', 'strike',
+    'color', 'background', 'list', 'bullet', 'indent', 'align'
+  ];
+
+  if (!isEditing) {
+    return (
+      <div
+        className={`prose prose-sm max-w-none ${className}`}
+        dangerouslySetInnerHTML={{ __html: value || placeholder }}
+      />
+    );
+  }
+
+  return (
+    <div className={`rich-editor-container ${className}`}>
+      <ReactQuill
+        theme="snow"
+        value={value || ''}
+        onChange={onChange}
+        modules={quillModules}
+        formats={quillFormats}
+        placeholder={placeholder}
+        className="bg-white rounded-lg"
+      />
+      <style>{`
+        .rich-editor-container .ql-container {
+          min-height: 150px;
+          font-size: 14px;
+          font-family: inherit;
+        }
+        .rich-editor-container .ql-editor {
+          min-height: 150px;
+          line-height: 1.6;
+        }
+        .rich-editor-container .ql-toolbar {
+          border-radius: 8px 8px 0 0;
+          background: #f8fafc;
+          border-color: #e2e8f0;
+        }
+        .rich-editor-container .ql-container {
+          border-radius: 0 0 8px 8px;
+          border-color: #e2e8f0;
+        }
+        .rich-editor-container .ql-editor.ql-blank::before {
+          color: #94a3b8;
+          font-style: normal;
+        }
+        @media print {
+          .rich-editor-container .ql-toolbar {
+            display: none !important;
+          }
+          .rich-editor-container .ql-container {
+            border: none !important;
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
 
 const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   if (!isOpen) return null;
@@ -1024,11 +1101,24 @@ const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onR
   );
 };
 
+// Card templates for quick creation
+const CARD_TEMPLATES = [
+  { id: 'consejo', title: 'Consejo', iconName: 'Consejo', color: 'indigo', content: '<p>Escribe aquí tu consejo para el paciente...</p>' },
+  { id: 'advertencia', title: 'Advertencia', iconName: 'Alerta', color: 'amber', content: '<p><strong>Importante:</strong> Escribe aquí la advertencia...</p>' },
+  { id: 'instrucciones', title: 'Instrucciones', iconName: 'Check', color: 'emerald', content: '<ul><li>Paso 1</li><li>Paso 2</li><li>Paso 3</li></ul>' },
+  { id: 'precaucion', title: 'Precaución', iconName: 'Stop', color: 'rose', content: '<p>⚠️ Ten cuidado con...</p>' },
+  { id: 'informacion', title: 'Información', iconName: 'Actividad', color: 'sky', content: '<p>Información importante sobre el tratamiento...</p>' },
+  { id: 'horario', title: 'Horario', iconName: 'Reloj', color: 'purple', content: '<p>🕐 <strong>Mañana:</strong> ...<br/>🕐 <strong>Noche:</strong> ...</p>' },
+  { id: 'alimentacion', title: 'Alimentación', iconName: 'Café', color: 'amber', content: '<p>Tomar con/sin alimentos...</p>' },
+  { id: 'vacio', title: 'Tarjeta Vacía', iconName: 'Consejo', color: 'slate', content: '' },
+];
+
 const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   const [draggedItemIndex, setDraggedItemIndex] = useState(null);
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [iconPicker, setIconPicker] = useState({ isOpen: false, targetIndex: null });
+  const [showCardTemplates, setShowCardTemplates] = useState(false);
 
   const layout = drug.patientSections.layout || [];
   const customCards = drug.patientSections.customCards || [];
@@ -1054,6 +1144,22 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   const handleDeleteItem = (index) => { setConfirmModal({ isOpen: true, title: 'Eliminar Tarjeta', message: '¿Seguro?', onConfirm: () => { const newLayout = [...layout]; newLayout.splice(index, 1); updateLayout(newLayout); } }); };
   const handleDrop = (e, dropIndex) => { e.preventDefault(); if (draggedItemIndex === null || draggedItemIndex === dropIndex) return; const newLayout = [...layout]; const item = newLayout.splice(draggedItemIndex, 1)[0]; newLayout.splice(dropIndex, 0, item); updateLayout(newLayout); setDraggedItemIndex(null); setDragOverIndex(null); };
   const handleIconSelect = (iconName) => { const newLayout = [...layout]; newLayout[iconPicker.targetIndex] = { ...newLayout[iconPicker.targetIndex], iconName: iconName }; updateLayout(newLayout); };
+
+  // Add card from template
+  const addCardFromTemplate = (template) => {
+    const newCardId = `custom_${Date.now()}`;
+    const newCard = { id: newCardId, title: template.title, content: template.content };
+    const newLayoutItem = { id: newCardId, type: 'custom', colSpan: 4, heightLevel: 1, color: template.color, iconName: template.iconName };
+    updateDrug({
+      ...drug,
+      patientSections: {
+        ...drug.patientSections,
+        customCards: [...customCards, newCard],
+        layout: [...layout, newLayoutItem]
+      }
+    });
+    setShowCardTemplates(false);
+  };
 
   const titles = drug.patientSections.titles || { intro: 'Tu Nuevo Aliado', onset: 'Efecto Esperado', admin: 'Cómo inyectarse', missed: '¿Se te olvidó?', disposal: '¿Dónde lo tiro?', travel: 'Kit Viaje', conservation: 'Conservación', tips: 'Consejos', normal: 'Lo Normal', consult: 'Consultar', urgency: 'Urgencias' };
   const updateTitle = (key, val) => updatePat('titles', { ...titles, [key]: val });
@@ -1100,23 +1206,30 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
           };
           return (
             <div className={`${theme.bg} rounded-xl p-4 border ${theme.border} h-full overflow-auto break-words`}>
+              <div className={`flex items-center gap-2 mb-3 ${theme.icon}`}>
+                <IconComponent size={16}/>
+                {isEditing ? (
+                  <input
+                    value={c.title || ''}
+                    onChange={e => updateCustomCard('title', e.target.value)}
+                    className="font-bold bg-transparent border-b-2 border-indigo-300 outline-none w-full uppercase text-[10px] tracking-widest"
+                    placeholder="Título de la tarjeta"
+                  />
+                ) : (
+                  <h4 className="font-bold text-[10px] uppercase tracking-widest">{c.title || 'Sin título'}</h4>
+                )}
+              </div>
               {isEditing ? (
-                <input
-                  value={c.title || ''}
-                  onChange={e => updateCustomCard('title', e.target.value)}
-                  className="font-bold bg-transparent border-b-2 border-indigo-300 outline-none w-full mb-2 p-1"
-                  placeholder="Título de la tarjeta"
+                <RichTextEditor
+                  value={c.content || ''}
+                  isEditing={true}
+                  placeholder="Escribe el contenido de la tarjeta..."
+                  onChange={v => updateCustomCard('content', v)}
+                  className="text-xs"
                 />
               ) : (
-                <h4 className="font-bold text-xs uppercase mb-2 break-words">{c.title || 'Sin título'}</h4>
+                <div className="text-xs prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: c.content || '' }} />
               )}
-              <EditableText
-                value={c.content || ''}
-                isEditing={isEditing}
-                multiline
-                onChange={v => updateCustomCard('content', v)}
-                className="text-xs break-words"
-              />
             </div>
           );
         default: return null;
@@ -1129,20 +1242,46 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
        <div id="pdf-content" className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0">
           <div className="flex justify-between items-start border-b-4 border-indigo-600 pb-4 mb-6"><div className="flex gap-4 items-center"><div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 text-indigo-600">{settings.logoUrl?<img src={settings.logoUrl} className="w-full h-full object-contain p-2"/>:<Stethoscope size={32}/>}</div><div><h1 className="text-2xl font-black text-slate-900 tracking-tight">{drug.name}</h1><p className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">Guía de Inicio</p></div></div><div className="text-right"><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{settings.hospitalName}</div></div></div>
           <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)}>{renderCardContent(item, index)}</ResizableCard>))}</div>
-          {isEditing && <div className="mb-6 flex justify-center"><button onClick={()=>{
-            const newCardId = `custom_${Date.now()}`;
-            const newCard = {id: newCardId, title: 'Nueva Tarjeta', content: 'Contenido de la tarjeta...'};
-            const newLayoutItem = {id: newCardId, type:'custom', colSpan:4, heightLevel:1, color:'indigo', iconName:'Consejo'};
-            // Update both customCards and layout in a single call to avoid race condition
-            updateDrug({
-              ...drug,
-              patientSections: {
-                ...drug.patientSections,
-                customCards: [...customCards, newCard],
-                layout: [...layout, newLayoutItem]
-              }
-            });
-          }} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs"><Plus size={16} className="mr-2"/> AÑADIR TARJETA</button></div>}
+          {isEditing && <div className="mb-6 flex justify-center">
+            <button onClick={() => setShowCardTemplates(true)} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs hover:bg-indigo-100 transition-colors">
+              <Plus size={16} className="mr-2"/> AÑADIR TARJETA
+            </button>
+          </div>}
+
+          {/* Card Template Selector Modal */}
+          {showCardTemplates && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onClick={() => setShowCardTemplates(false)}>
+              <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-slate-800">Selecciona un tipo de tarjeta</h3>
+                  <button onClick={() => setShowCardTemplates(false)} className="text-slate-400 hover:text-slate-600">
+                    <X size={20}/>
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {CARD_TEMPLATES.map(template => {
+                    const TemplateIcon = ICON_MAP[template.iconName] || Sparkles;
+                    const theme = CARD_THEMES[template.color] || CARD_THEMES.indigo;
+                    return (
+                      <button
+                        key={template.id}
+                        onClick={() => addCardFromTemplate(template)}
+                        className={`${theme.bg} ${theme.border} border-2 rounded-xl p-4 text-left hover:scale-105 transition-transform hover:shadow-lg`}
+                      >
+                        <div className={`${theme.icon} mb-2`}>
+                          <TemplateIcon size={24}/>
+                        </div>
+                        <div className={`font-bold text-sm ${theme.title}`}>{template.title}</div>
+                        <div className={`text-xs ${theme.text} opacity-70 mt-1`}>
+                          {template.content ? 'Con contenido' : 'En blanco'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
           <div className="mt-auto pt-4 border-t border-slate-100 flex justify-between items-center"><div className="flex gap-6"><div className="flex gap-2 items-center"><Phone size={14} className="text-slate-400"/><EditableText value={drug.patientSections.contacts?.phone} isEditing={isEditing} onChange={v=>updateContact('phone',v)} className="text-xs font-bold text-slate-700"/></div></div></div>
        </div>
     </div>
@@ -2111,16 +2250,15 @@ const App = () => {
         );
       }
 
-      // Texto libre simple (sin items todavía)
+      // Texto libre simple (sin items todavía) - Usa editor rico tipo Word
       return (
         <div className="space-y-3">
-          <EditableText
+          <RichTextEditor
             value={section.content || ''}
             isEditing={isEditing}
-            multiline
-            showToolbar={true}
+            placeholder="Escribe aquí el contenido del protocolo..."
             onChange={v => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s => s.id === section.id ? {...s, content: v} : s)})}
-            className="text-sm text-slate-700 leading-relaxed block w-full"
+            className="text-sm text-slate-700 leading-relaxed"
           />
           {isEditing && (
             <div className="flex gap-2">
