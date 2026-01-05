@@ -947,40 +947,43 @@ const ResizableCard = ({ children, colSpan = 12, heightLevel = 1, isEditing, onR
       draggable={isEditing} onDragStart={(e) => isEditing && onDragStart(e, index)} onDragEnter={(e) => isEditing && onDragEnter(e, index)} onDragEnd={onDragEnd} onDragOver={(e) => e.preventDefault()} onDrop={(e) => isEditing && onDrop(e, index)}
     >
       {isEditing && isActive && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex bg-white border rounded-lg p-2 items-center shadow-xl z-[100] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-             <div className="mr-2 text-slate-400 cursor-grab hover:text-indigo-600 rounded p-1" title="Arrastrar"><GripVertical size={16}/></div>
-             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 flex bg-slate-800 text-white border border-slate-700 rounded-xl px-4 py-3 items-center shadow-2xl z-[100] animate-in fade-in zoom-in-95 duration-200" onMouseDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+             <div className="mr-3 text-slate-400 cursor-grab hover:text-white rounded p-1" title="Arrastrar"><GripVertical size={18}/></div>
+             <div className="w-px bg-slate-600 h-8 mx-3"></div>
 
-             <div className="flex flex-col mr-2">
-               <span className="text-[8px] text-slate-400 uppercase mb-1">Color</span>
-               <div className="flex gap-1">{Object.keys(CARD_THEMES).map(k => <button key={k} onClick={() => onColorChange(k)} className={`w-4 h-4 rounded ${CARD_THEMES[k].accent} hover:scale-125 transition-transform ${color === k ? 'ring-2 ring-indigo-600' : 'opacity-60'}`} title={CARD_THEMES[k].name}/>)}</div>
+             <div className="flex flex-col mr-3">
+               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Color</span>
+               <div className="flex gap-1.5">{Object.keys(CARD_THEMES).map(k => <button key={k} onClick={() => onColorChange(k)} className={`w-5 h-5 rounded-full ${CARD_THEMES[k].accent} hover:scale-125 transition-transform ${color === k ? 'ring-2 ring-white ring-offset-2 ring-offset-slate-800' : 'opacity-70 hover:opacity-100'}`} title={CARD_THEMES[k].name}/>)}</div>
              </div>
 
-             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+             <div className="w-px bg-slate-600 h-8 mx-3"></div>
 
-             <div className="flex flex-col mr-2">
-               <span className="text-[8px] text-slate-400 uppercase mb-1">Ancho</span>
-               <div className="flex items-center gap-1">
-                 <button onClick={() => onResize(-1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={colSpan <= 3}><Minus size={12}/></button>
-                 <span className="text-xs font-mono font-bold w-6 text-center">{colSpan}</span>
-                 <button onClick={() => onResize(1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={colSpan >= 12}><Plus size={12}/></button>
+             <div className="flex flex-col mr-3">
+               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Ancho</span>
+               <div className="flex items-center gap-2">
+                 <button onClick={() => onResize(-1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={colSpan <= 3}><Minus size={14}/></button>
+                 <span className="text-sm font-mono font-bold w-6 text-center">{colSpan}</span>
+                 <button onClick={() => onResize(1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={colSpan >= 12}><Plus size={14}/></button>
                </div>
              </div>
 
-             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+             <div className="w-px bg-slate-600 h-8 mx-3"></div>
 
-             <div className="flex flex-col mr-2">
-               <span className="text-[8px] text-slate-400 uppercase mb-1">Alto</span>
-               <div className="flex items-center gap-1">
-                 <button onClick={() => onResizeHeight(-1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={heightLevel <= 1}><Minus size={12}/></button>
-                 <span className="text-xs font-mono font-bold w-4 text-center">{heightLevel}</span>
-                 <button onClick={() => onResizeHeight(1)} className="p-1 hover:bg-slate-100 rounded disabled:opacity-30" disabled={heightLevel >= 5}><Plus size={12}/></button>
+             <div className="flex flex-col mr-3">
+               <span className="text-[9px] text-slate-400 uppercase mb-1.5 font-medium">Alto</span>
+               <div className="flex items-center gap-2">
+                 <button onClick={() => onResizeHeight(-1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={heightLevel <= 1}><Minus size={14}/></button>
+                 <span className="text-sm font-mono font-bold w-5 text-center">{heightLevel}</span>
+                 <button onClick={() => onResizeHeight(1)} className="p-1.5 hover:bg-slate-700 rounded-lg disabled:opacity-30 transition-colors" disabled={heightLevel >= 5}><Plus size={14}/></button>
                </div>
              </div>
 
-             <div className="w-px bg-slate-200 h-5 mx-2"></div>
+             <div className="w-px bg-slate-600 h-8 mx-3"></div>
 
-             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 hover:bg-rose-50 text-rose-400 hover:text-rose-600 rounded" title="Eliminar tarjeta"><Trash2 size={16}/></button>
+             <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 rounded-lg transition-colors" title="Eliminar tarjeta"><Trash2 size={18}/></button>
+
+             {/* Arrow pointing to the card */}
+             <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-slate-800 rotate-45 border-r border-b border-slate-700"></div>
         </div>
       )}
       <div className={`h-full flex flex-col transition-all ${heightClasses[heightLevel]} ${isEditing ? `border-2 ${isActive ? 'border-indigo-500 shadow-lg' : 'border-dashed border-slate-300'} rounded-xl` : ''}`}>
