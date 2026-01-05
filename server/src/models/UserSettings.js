@@ -34,6 +34,16 @@ const UserSettings = sequelize.define('UserSettings', {
     defaultValue: 'indigo',
     comment: 'Primary color theme for the interface',
   },
+  hospitalName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Hospital name for display',
+  },
+  pharmacistName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Pharmacist name for display',
+  },
 }, {
   tableName: 'user_settings',
   timestamps: true,

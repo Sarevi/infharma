@@ -140,6 +140,8 @@ export const getSettings = async (req, res) => {
         customAreas: mergedAreas,
         logoUrl: settings.logoUrl,
         primaryColor: settings.primaryColor,
+        hospitalName: settings.hospitalName || '',
+        pharmacistName: settings.pharmacistName || '',
       }
     });
   } catch (error) {
@@ -160,7 +162,7 @@ export const getSettings = async (req, res) => {
 export const updateSettings = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { customAreas, logoUrl, primaryColor } = req.body;
+    const { customAreas, logoUrl, primaryColor, hospitalName, pharmacistName } = req.body;
 
     let settings = await UserSettings.findOne({
       where: { userId }
@@ -172,7 +174,9 @@ export const updateSettings = async (req, res) => {
         userId,
         customAreas: customAreas || {},
         logoUrl: logoUrl || '',
-        primaryColor: primaryColor || 'indigo'
+        primaryColor: primaryColor || 'indigo',
+        hospitalName: hospitalName || '',
+        pharmacistName: pharmacistName || ''
       });
     } else {
       // Update only provided fields
@@ -183,6 +187,8 @@ export const updateSettings = async (req, res) => {
       }
       if (logoUrl !== undefined) updates.logoUrl = logoUrl;
       if (primaryColor !== undefined) updates.primaryColor = primaryColor;
+      if (hospitalName !== undefined) updates.hospitalName = hospitalName;
+      if (pharmacistName !== undefined) updates.pharmacistName = pharmacistName;
 
       await settings.update(updates);
     }
@@ -194,6 +200,8 @@ export const updateSettings = async (req, res) => {
         customAreas: settings.customAreas,
         logoUrl: settings.logoUrl,
         primaryColor: settings.primaryColor,
+        hospitalName: settings.hospitalName,
+        pharmacistName: settings.pharmacistName,
       }
     });
   } catch (error) {

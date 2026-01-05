@@ -1339,6 +1339,8 @@ const App = () => {
       await settingsAPI.updateSettings({
         logoUrl: newSettings.logoUrl,
         primaryColor: newSettings.primaryColor,
+        hospitalName: newSettings.hospitalName,
+        pharmacistName: newSettings.pharmacistName,
       });
     } catch (error) {
       console.error('Error saving settings:', error);
@@ -2287,6 +2289,13 @@ const App = () => {
                                   )}
                                   <button onClick={()=>setIsEditing(true)} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 flex items-center font-medium">
                                     <Edit3 size={14} className="mr-2"/> Editar
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteDrug(selectedDrug.id)}
+                                    className="px-3 py-2 border border-rose-200 bg-rose-50 text-rose-600 rounded-lg text-sm hover:bg-rose-100 flex items-center font-medium"
+                                    title="Eliminar medicamento"
+                                  >
+                                    <Trash2 size={14} className="mr-2"/> Eliminar
                                   </button>
                                 </>
                               )}
