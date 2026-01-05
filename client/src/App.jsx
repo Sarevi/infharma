@@ -26,7 +26,10 @@ import {
   Bold, Italic, Underline, Wind,
 
   // ESTADÍSTICAS Y GRÁFICAS
-  BarChart3, History, Image, Table
+  BarChart3, History, Image, Table,
+
+  // Restaurar
+  RotateCcw
 } from 'lucide-react';
 import ChatLayout from './components/Chat/ChatLayout';
 import { useAuth } from './context/AuthContext';
@@ -688,7 +691,7 @@ const LoginPage = () => {
       setIsLoading(false);
     } else {
       // Register
-      if (!email || !password || !name || !hospital || !specialty) {
+      if (!email || !password || !name || !hospital) {
         setError('Por favor completa todos los campos');
         setTimeout(() => setError(''), 3000);
         return;
@@ -1425,6 +1428,26 @@ const App = () => {
         console.error('Error deleting drug:', error);
         alert('Error al eliminar el medicamento: ' + (error.response?.data?.message || error.message));
       }
+    }
+  };
+
+  const handleResetDrug = async (drug) => {
+    if(!window.confirm("¿Restaurar a la versión original del administrador? Se perderán tus cambios personales.")) {
+      return;
+    }
+    try {
+      const response = await drugsAPI.resetDrug(drug.id);
+      if (response.success) {
+        // Update local data: remove user's copy and add original
+        setData(prev => prev.filter(d => d.id !== drug.id));
+        setData(prev => [...prev, response.drug]);
+        setSelectedDrug(response.drug);
+        setIsEditing(false);
+        alert('Medicamento restaurado a la versión original');
+      }
+    } catch (error) {
+      console.error('Error resetting drug:', error);
+      alert('Error al restaurar: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -2232,9 +2255,20 @@ const App = () => {
                               </button>
                                 </>
                               ) : (
-                                <button onClick={()=>setIsEditing(true)} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 flex items-center font-medium">
-                                  <Edit3 size={14} className="mr-2"/> Editar
-                                </button>
+                                <>
+                                  {selectedDrug.hasOriginal && (
+                                    <button
+                                      onClick={() => handleResetDrug(selectedDrug)}
+                                      className="px-3 py-2 border border-amber-300 bg-amber-50 text-amber-700 rounded-lg text-sm hover:bg-amber-100 flex items-center font-medium"
+                                      title="Restaurar a versión original del administrador"
+                                    >
+                                      <RotateCcw size={14} className="mr-2"/> Original
+                                    </button>
+                                  )}
+                                  <button onClick={()=>setIsEditing(true)} className="px-3 py-2 border rounded-lg text-sm hover:bg-slate-50 flex items-center font-medium">
+                                    <Edit3 size={14} className="mr-2"/> Editar
+                                  </button>
+                                </>
                               )}
                         </div>
                     </div>

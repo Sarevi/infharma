@@ -21,6 +21,11 @@ const Drug = sequelize.define('Drug', {
     defaultValue: false,
     comment: 'True if drug is created by admin and visible to all users',
   },
+  originalDrugId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    comment: 'Reference to original global drug if this is a user copy',
+  },
   name: {
     type: DataTypes.STRING,
     allowNull: false,
