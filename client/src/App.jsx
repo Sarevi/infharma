@@ -1164,9 +1164,11 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
   const titles = drug.patientSections.titles || { intro: 'Tu Nuevo Aliado', onset: 'Efecto Esperado', admin: 'Cómo inyectarse', missed: '¿Se te olvidó?', disposal: '¿Dónde lo tiro?', travel: 'Kit Viaje', conservation: 'Conservación', tips: 'Consejos', normal: 'Lo Normal', consult: 'Consultar', urgency: 'Urgencias' };
   const updateTitle = (key, val) => updatePat('titles', { ...titles, [key]: val });
 
-  const renderCardContent = (item, index) => {
+  const renderCardContent = (item, index, isCardActive = false) => {
       const theme = CARD_THEMES[item.color] || CARD_THEMES.indigo;
       const IconComponent = ICON_MAP[item.iconName] || ICON_MAP['Actividad'] || Activity;
+      // Custom cards can be edited when in edit mode OR when the card is active
+      const canEditCustomCard = isEditing || isCardActive;
       
       const commonHeader = (key) => (
          <div className={`flex items-center gap-2 mb-2 ${theme.icon} font-bold uppercase tracking-widest text-[10px]`}>
@@ -1190,7 +1192,15 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
         case 'sideEffects': return <div className="grid grid-cols-3 gap-4 h-full"><div className="border-t-4 border-emerald-400 bg-white pt-3">{commonHeader('normal')}<div className="text-[10px] text-slate-500 space-y-1">{drug.patientSections.sideEffects.filter(s=>!s.includes('🟡')).map((s,i)=><EditableText key={i} value={s.replace('🟢','')} isEditing={isEditing} multiline onChange={()=>{}}/>)}</div></div><div className="border-t-4 border-amber-400 bg-white pt-3">{commonHeader('consult')}<div className="text-[10px] text-slate-500 space-y-1">{drug.patientSections.sideEffects.filter(s=>s.includes('🟡')).map((s,i)=><EditableText key={i} value={s.replace('🟡','')} isEditing={isEditing} multiline onChange={()=>{}}/>)}</div></div><div className="border-t-4 border-rose-500 bg-rose-50 pt-3 px-2">{commonHeader('urgency')}<div className="text-[10px] text-rose-800 font-bold space-y-1">{drug.patientSections.alarms.map((s,i)=><div key={i} className="flex"><span className="mr-1">•</span><EditableText value={s} isEditing={isEditing} multiline onChange={v=>updateArray('alarms',i,v)}/></div>)}</div></div></div>;
         case 'custom':
           const existingCard = customCards.find(x=>x.id===item.id);
-          const c = existingCard || {id: item.id, title:'', content:''};
+          const c = existingCard || {id: item.id, title:'', content:'', titleSize: 'sm'};
+          const titleSizes = {
+            xs: 'text-[8px]',
+            sm: 'text-[10px]',
+            md: 'text-xs',
+            lg: 'text-sm',
+            xl: 'text-base'
+          };
+          const currentTitleSize = c.titleSize || 'sm';
           const updateCustomCard = (field, value) => {
             // If card doesn't exist in array, add it; otherwise update it
             let newCards;
@@ -1208,19 +1218,34 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
             <div className={`${theme.bg} rounded-xl p-4 border ${theme.border} h-full overflow-auto break-words`}>
               <div className={`flex items-center gap-2 mb-3 ${theme.icon}`}>
                 <IconComponent size={16}/>
-                {isEditing ? (
-                  <input
-                    value={c.title || ''}
-                    onChange={e => updateCustomCard('title', e.target.value)}
-                    onClick={e => e.stopPropagation()}
-                    className="font-bold bg-transparent border-b-2 border-indigo-300 outline-none w-full uppercase text-[10px] tracking-widest"
-                    placeholder="Título de la tarjeta"
-                  />
+                {canEditCustomCard ? (
+                  <div className="flex-1 flex items-center gap-2">
+                    <input
+                      value={c.title || ''}
+                      onChange={e => updateCustomCard('title', e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      className={`font-bold bg-transparent border-b-2 border-indigo-300 outline-none flex-1 uppercase tracking-widest ${titleSizes[currentTitleSize]}`}
+                      placeholder="Título de la tarjeta"
+                    />
+                    <select
+                      value={currentTitleSize}
+                      onChange={e => { e.stopPropagation(); updateCustomCard('titleSize', e.target.value); }}
+                      onClick={e => e.stopPropagation()}
+                      className="text-[9px] bg-white border rounded px-1 py-0.5 cursor-pointer"
+                      title="Tamaño del título"
+                    >
+                      <option value="xs">XS</option>
+                      <option value="sm">S</option>
+                      <option value="md">M</option>
+                      <option value="lg">L</option>
+                      <option value="xl">XL</option>
+                    </select>
+                  </div>
                 ) : (
-                  <h4 className="font-bold text-[10px] uppercase tracking-widest">{c.title || 'Sin título'}</h4>
+                  <h4 className={`font-bold uppercase tracking-widest ${titleSizes[currentTitleSize]}`}>{c.title || 'Sin título'}</h4>
                 )}
               </div>
-              {isEditing ? (
+              {canEditCustomCard ? (
                 <RichTextEditor
                   value={c.content || ''}
                   isEditing={true}
@@ -1242,7 +1267,7 @@ const PatientInfographic = ({ drug, isEditing, updateDrug, settings }) => {
        <ConfirmModal isOpen={confirmModal.isOpen} onClose={()=>setConfirmModal({...confirmModal,isOpen:false})} onConfirm={confirmModal.onConfirm} title={confirmModal.title} message={confirmModal.message}/>
        <div id="pdf-content" className="bg-white shadow-2xl w-[210mm] min-h-[297mm] p-[15mm] relative flex flex-col text-slate-800 box-border print:shadow-none print:w-full print:p-0" onClick={e => e.stopPropagation()}>
           <div className="flex justify-between items-start border-b-4 border-indigo-600 pb-4 mb-6"><div className="flex gap-4 items-center"><div className="w-16 h-16 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 text-indigo-600">{settings.logoUrl?<img src={settings.logoUrl} className="w-full h-full object-contain p-2"/>:<Stethoscope size={32}/>}</div><div><h1 className="text-2xl font-black text-slate-900 tracking-tight">{drug.name}</h1><p className="text-indigo-600 font-bold uppercase tracking-widest text-[10px]">Guía de Inicio</p></div></div><div className="text-right"><div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">{settings.hospitalName}</div></div></div>
-          <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)} isActive={activeCardIndex===index} onActivate={(idx)=>setActiveCardIndex(activeCardIndex===idx?null:idx)}>{renderCardContent(item, index)}</ResizableCard>))}</div>
+          <div className="grid grid-cols-12 auto-rows-min gap-6 mb-6">{layout.map((item, index) => (<ResizableCard key={item.id} index={index} colSpan={item.colSpan} heightLevel={item.heightLevel||1} isEditing={isEditing} color={item.color||'indigo'} onResize={d=>handleResize(index,d)} onResizeHeight={d=>handleResizeHeight(index,d)} onDelete={()=>handleDeleteItem(index)} onDragStart={(e)=>setDraggedItemIndex(index)} onDragEnter={(e)=>{e.preventDefault();if(index!==dragOverIndex)setDragOverIndex(index)}} onDragEnd={()=>{setDraggedItemIndex(null);setDragOverIndex(null)}} onDrop={e=>handleDrop(e,index)} isDragging={draggedItemIndex===index} isDragOver={dragOverIndex===index} onColorChange={c=>handleColorChange(index,c)} isActive={activeCardIndex===index} onActivate={(idx)=>setActiveCardIndex(activeCardIndex===idx?null:idx)}>{renderCardContent(item, index, activeCardIndex===index)}</ResizableCard>))}</div>
           {isEditing && <div className="mb-6 flex justify-center">
             <button onClick={() => setShowCardTemplates(true)} className="flex items-center px-4 py-2 bg-indigo-50 border border-indigo-200 border-dashed rounded-lg text-indigo-600 font-bold text-xs hover:bg-indigo-100 transition-colors">
               <Plus size={16} className="mr-2"/> AÑADIR TARJETA
@@ -1551,7 +1576,13 @@ const App = () => {
 
     const handleDrugCreated = ({ drug }) => {
       console.log('📢 New drug created by admin:', drug.name);
-      setData(prevData => [...prevData, drug]);
+      // Only add if not already in list (avoid duplicate when creator receives their own event)
+      setData(prevData => {
+        if (prevData.some(d => d.id === drug.id)) {
+          return prevData;
+        }
+        return [...prevData, drug];
+      });
     };
 
     const handleDrugDeleted = ({ drugId }) => {
