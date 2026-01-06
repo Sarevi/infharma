@@ -1391,6 +1391,7 @@ const App = () => {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const autoSaveTimeoutRef = useRef(null);
   const lastSavedDrugRef = useRef(null);
+  const recentlyCreatedDrugIds = useRef(new Set()); // Track drugs created by this client to avoid socket duplicates
 
   // Auto-save functionality with debounce
   useEffect(() => {
@@ -1576,7 +1577,12 @@ const App = () => {
 
     const handleDrugCreated = ({ drug }) => {
       console.log('📢 New drug created by admin:', drug.name);
-      // Only add if not already in list (avoid duplicate when creator receives their own event)
+      // Skip if this client just created this drug (avoid duplicate)
+      if (recentlyCreatedDrugIds.current.has(drug.id)) {
+        console.log('📢 Skipping - drug was created by this client');
+        return;
+      }
+      // Only add if not already in list
       setData(prevData => {
         if (prevData.some(d => d.id === drug.id)) {
           return prevData;
@@ -1716,6 +1722,10 @@ const App = () => {
         // Create new drug
         const response = await drugsAPI.createDrug(drugData);
         savedDrug = response.drug;
+        // Track this ID to avoid duplicate from socket event
+        recentlyCreatedDrugIds.current.add(savedDrug.id);
+        // Clean up after 5 seconds
+        setTimeout(() => recentlyCreatedDrugIds.current.delete(savedDrug.id), 5000);
         // Add to local state
         setData(prev => [...prev, savedDrug]);
       } else {
