@@ -174,34 +174,27 @@ const Badge = ({ children, className = "" }) => <span className={`px-2.5 py-0.5 
 // --- EDITOR RICO TIPO WORD ---
 const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", className = "" }) => {
   const quillRef = useRef(null);
+  const fileInputRef = useRef(null);
 
-  // Registrar el handler de imagen después de que el editor se monte
-  useEffect(() => {
-    if (isEditing && quillRef.current) {
-      const quill = quillRef.current.getEditor();
-      const toolbar = quill.getModule('toolbar');
+  const handleImageUpload = () => {
+    fileInputRef.current?.click();
+  };
 
-      toolbar.addHandler('image', () => {
-        const input = document.createElement('input');
-        input.setAttribute('type', 'file');
-        input.setAttribute('accept', 'image/*');
-        input.click();
-
-        input.onchange = () => {
-          const file = input.files[0];
-          if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const range = quill.getSelection(true);
-              quill.insertEmbed(range.index, 'image', e.target.result);
-              quill.setSelection(range.index + 1);
-            };
-            reader.readAsDataURL(file);
-          }
-        };
-      });
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file && quillRef.current) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const quill = quillRef.current.getEditor();
+        const range = quill.getSelection(true);
+        quill.insertEmbed(range.index, 'image', event.target.result);
+        quill.setSelection(range.index + 1);
+      };
+      reader.readAsDataURL(file);
     }
-  }, [isEditing]);
+    // Reset input para permitir subir la misma imagen otra vez
+    e.target.value = '';
+  };
 
   const quillModules = useMemo(() => ({
     toolbar: [
@@ -211,7 +204,7 @@ const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", classNam
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       [{ 'indent': '-1'}, { 'indent': '+1' }],
       [{ 'align': [] }],
-      ['link', 'image'],
+      ['link'],
       ['clean']
     ],
   }), []);
@@ -233,6 +226,30 @@ const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", classNam
 
   return (
     <div className={`rich-editor-container ${className}`}>
+      {/* Input oculto para subir imágenes */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileChange}
+        accept="image/*"
+        style={{ display: 'none' }}
+      />
+      {/* Botón personalizado para subir imagen */}
+      <div className="flex justify-end mb-1">
+        <button
+          type="button"
+          onClick={handleImageUpload}
+          className="px-3 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 flex items-center gap-1"
+          title="Subir imagen desde el ordenador"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          Insertar imagen
+        </button>
+      </div>
       <ReactQuill
         ref={quillRef}
         theme="snow"
