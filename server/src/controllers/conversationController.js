@@ -100,22 +100,13 @@ export const createConversation = async (req, res) => {
       });
     }
 
-    // Validate that all participants are contacts of the creator
+    // Verify all participants exist
     for (const participantId of participantIds) {
-      const contactRequest = await ContactRequest.findOne({
-        where: {
-          [Op.or]: [
-            { sender_id: creatorId, receiver_id: participantId },
-            { sender_id: participantId, receiver_id: creatorId },
-          ],
-          status: 'accepted',
-        },
-      });
-
-      if (!contactRequest) {
-        return res.status(403).json({
+      const userExists = await User.findByPk(participantId);
+      if (!userExists) {
+        return res.status(404).json({
           success: false,
-          message: 'Solo puedes crear conversaciones con tus contactos aceptados',
+          message: `Usuario con ID ${participantId} no encontrado`,
         });
       }
     }
