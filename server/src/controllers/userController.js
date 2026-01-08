@@ -42,14 +42,22 @@ export const getUsers = async (req, res) => {
 
         const profile = user.getPublicProfile();
 
-        // Allow all users to chat with each other (no contact requirement)
+        if (!contactRequest) {
+          return {
+            ...profile,
+            contactStatus: 'none',
+            canSendRequest: true,
+            canChat: false,
+          };
+        }
+
         return {
           ...profile,
-          contactStatus: contactRequest?.status || 'none',
-          contactRequestId: contactRequest?.id,
-          isSender: contactRequest ? contactRequest.sender_id === req.user.id : false,
-          canSendRequest: !contactRequest || contactRequest.status === 'rejected',
-          canChat: true, // All users can chat with each other
+          contactStatus: contactRequest.status,
+          contactRequestId: contactRequest.id,
+          isSender: contactRequest.sender_id === req.user.id,
+          canSendRequest: contactRequest.status === 'rejected',
+          canChat: contactRequest.status === 'accepted',
         };
       })
     );

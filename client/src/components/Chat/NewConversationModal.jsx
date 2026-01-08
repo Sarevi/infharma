@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Search, Users as UsersIcon, MessageCircle, Check } from 'lucide-react';
+import { X, Search, Users as UsersIcon, MessageCircle, UserPlus, Clock, Check } from 'lucide-react';
 import { useChat } from '../../context/ChatContext';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
@@ -41,6 +41,15 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
     : [];
 
   const toggleUser = (userId) => {
+    const userObj = users.find(u => u.id === userId);
+
+    // Solo permitir seleccionar si es contacto aceptado
+    if (!userObj?.canChat) {
+      setError('Solo puedes chatear con tus contactos aceptados. Envía una solicitud primero.');
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
     if (conversationType === 'direct') {
       setSelectedUsers([userId]);
     } else {
@@ -215,26 +224,48 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleUser(u.id)}
-                      className={`px-3 py-1.5 text-sm rounded-lg flex items-center gap-1 ${
-                        selectedUsers.includes(u.id)
-                          ? 'bg-green-600 text-white'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                    >
-                      {selectedUsers.includes(u.id) ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          Añadido
-                        </>
+                    {u.canChat ? (
+                      <button
+                        onClick={() => toggleUser(u.id)}
+                        className={`px-3 py-1.5 text-sm rounded-lg flex items-center gap-1 ${
+                          selectedUsers.includes(u.id)
+                            ? 'bg-green-600 text-white'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        {selectedUsers.includes(u.id) ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Añadido
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            {conversationType === 'group' ? 'Añadir' : 'Chatear'}
+                          </>
+                        )}
+                      </button>
+                    ) : u.contactStatus === 'pending' ? (
+                      u.isSender ? (
+                        <div className="px-3 py-1.5 bg-gray-200 text-gray-600 text-sm rounded-lg flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Pendiente
+                        </div>
                       ) : (
-                        <>
-                          <MessageCircle className="w-3.5 h-3.5" />
-                          {conversationType === 'group' ? 'Añadir' : 'Chatear'}
-                        </>
-                      )}
-                    </button>
+                        <div className="px-3 py-1.5 bg-amber-100 text-amber-700 text-sm rounded-lg flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          Recibida
+                        </div>
+                      )
+                    ) : u.canSendRequest ? (
+                      <button
+                        onClick={() => handleSendRequest(u.id)}
+                        className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 flex items-center gap-1"
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        Agregar
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ))}
