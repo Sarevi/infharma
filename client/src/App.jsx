@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import html2pdf from 'html2pdf.js';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -175,46 +175,46 @@ const Badge = ({ children, className = "" }) => <span className={`px-2.5 py-0.5 
 const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", className = "" }) => {
   const quillRef = useRef(null);
 
-  const imageHandler = useCallback(() => {
-    const input = document.createElement('input');
-    input.setAttribute('type', 'file');
-    input.setAttribute('accept', 'image/*');
-    input.click();
+  // Registrar el handler de imagen después de que el editor se monte
+  useEffect(() => {
+    if (isEditing && quillRef.current) {
+      const quill = quillRef.current.getEditor();
+      const toolbar = quill.getModule('toolbar');
 
-    input.onchange = async () => {
-      const file = input.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const quill = quillRef.current?.getEditor();
-          if (quill) {
-            const range = quill.getSelection(true);
-            quill.insertEmbed(range.index, 'image', e.target.result);
-            quill.setSelection(range.index + 1);
+      toolbar.addHandler('image', () => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'file');
+        input.setAttribute('accept', 'image/*');
+        input.click();
+
+        input.onchange = () => {
+          const file = input.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const range = quill.getSelection(true);
+              quill.insertEmbed(range.index, 'image', e.target.result);
+              quill.setSelection(range.index + 1);
+            };
+            reader.readAsDataURL(file);
           }
         };
-        reader.readAsDataURL(file);
-      }
-    };
-  }, []);
+      });
+    }
+  }, [isEditing]);
 
   const quillModules = useMemo(() => ({
-    toolbar: {
-      container: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{ 'color': [] }, { 'background': [] }],
-        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-        [{ 'indent': '-1'}, { 'indent': '+1' }],
-        [{ 'align': [] }],
-        ['link', 'image'],
-        ['clean']
-      ],
-      handlers: {
-        image: imageHandler
-      }
-    },
-  }), [imageHandler]);
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
+      ['link', 'image'],
+      ['clean']
+    ],
+  }), []);
 
   const quillFormats = [
     'header', 'bold', 'italic', 'underline', 'strike',
