@@ -45,7 +45,7 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
 
     // Solo permitir seleccionar si es contacto aceptado
     if (!userObj?.canChat) {
-      setError('Solo puedes chatear con tus contactos aceptados');
+      setError('Solo puedes chatear con tus contactos aceptados. Envía una solicitud primero.');
       setTimeout(() => setError(''), 3000);
       return;
     }
@@ -227,10 +227,23 @@ const NewConversationModal = ({ isOpen, onClose, onConversationCreated }) => {
                     {u.canChat ? (
                       <button
                         onClick={() => toggleUser(u.id)}
-                        className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 flex items-center gap-1"
+                        className={`px-3 py-1.5 text-sm rounded-lg flex items-center gap-1 ${
+                          selectedUsers.includes(u.id)
+                            ? 'bg-green-600 text-white'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
                       >
-                        <MessageCircle className="w-3.5 h-3.5" />
-                        Chatear
+                        {selectedUsers.includes(u.id) ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Añadido
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="w-3.5 h-3.5" />
+                            {conversationType === 'group' ? 'Añadir' : 'Chatear'}
+                          </>
+                        )}
                       </button>
                     ) : u.contactStatus === 'pending' ? (
                       u.isSender ? (
