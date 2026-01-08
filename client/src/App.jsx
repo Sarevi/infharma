@@ -2565,9 +2565,9 @@ const App = () => {
                              </p>
                            )}
 
-                           {/* Patologías */}
-                           {subAreas.map(subArea => {
-                             const subAreaDrugs = allDrugsInArea.filter(d => d.subArea === subArea);
+                           {/* Patologías (ordenadas alfabéticamente) */}
+                           {[...subAreas].sort((a, b) => a.localeCompare(b, 'es')).map(subArea => {
+                             const subAreaDrugs = allDrugsInArea.filter(d => d.subArea === subArea).sort((a, b) => a.name.localeCompare(b.name, 'es'));
                              const subAreaKey = `${sys}-${subArea}`;
                              const isSubAreaOpen = expandedAreas[subAreaKey] || searchTerm;
 
