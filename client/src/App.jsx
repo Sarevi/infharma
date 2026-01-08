@@ -2038,11 +2038,37 @@ const App = () => {
         const handleImageFileUpload = (e) => {
           const file = e.target.files[0];
           if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              updateField('imageUrl', event.target.result);
+            // Comprimir imagen antes de subir
+            const img = new window.Image();
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+
+            img.onload = () => {
+              // Máximo 1200px de ancho/alto manteniendo proporción
+              const maxSize = 1200;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > maxSize || height > maxSize) {
+                if (width > height) {
+                  height = (height / width) * maxSize;
+                  width = maxSize;
+                } else {
+                  width = (width / height) * maxSize;
+                  height = maxSize;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              ctx.drawImage(img, 0, 0, width, height);
+
+              // Convertir a JPEG con 80% de calidad
+              const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+              updateField('imageUrl', compressedBase64);
             };
-            reader.readAsDataURL(file);
+
+            img.src = URL.createObjectURL(file);
           }
         };
         return (
