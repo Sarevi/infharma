@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import html2pdf from 'html2pdf.js';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -173,21 +173,53 @@ const Badge = ({ children, className = "" }) => <span className={`px-2.5 py-0.5 
 
 // --- EDITOR RICO TIPO WORD ---
 const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", className = "" }) => {
+  const quillRef = useRef(null);
+
+  const imageHandler = useCallback(() => {
+    const input = document.createElement('input');
+    input.setAttribute('type', 'file');
+    input.setAttribute('accept', 'image/*');
+    input.click();
+
+    input.onchange = async () => {
+      const file = input.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const quill = quillRef.current?.getEditor();
+          if (quill) {
+            const range = quill.getSelection(true);
+            quill.insertEmbed(range.index, 'image', e.target.result);
+            quill.setSelection(range.index + 1);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+  }, []);
+
   const quillModules = useMemo(() => ({
-    toolbar: [
-      [{ 'header': [1, 2, 3, false] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-      [{ 'indent': '-1'}, { 'indent': '+1' }],
-      [{ 'align': [] }],
-      ['clean']
-    ],
-  }), []);
+    toolbar: {
+      container: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ 'color': [] }, { 'background': [] }],
+        [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+        [{ 'indent': '-1'}, { 'indent': '+1' }],
+        [{ 'align': [] }],
+        ['link', 'image'],
+        ['clean']
+      ],
+      handlers: {
+        image: imageHandler
+      }
+    },
+  }), [imageHandler]);
 
   const quillFormats = [
     'header', 'bold', 'italic', 'underline', 'strike',
-    'color', 'background', 'list', 'bullet', 'indent', 'align'
+    'color', 'background', 'list', 'bullet', 'indent', 'align',
+    'link', 'image'
   ];
 
   if (!isEditing) {
@@ -202,6 +234,7 @@ const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", classNam
   return (
     <div className={`rich-editor-container ${className}`}>
       <ReactQuill
+        ref={quillRef}
         theme="snow"
         value={value || ''}
         onChange={onChange}
@@ -219,6 +252,12 @@ const RichTextEditor = ({ value, onChange, isEditing, placeholder = "", classNam
         .rich-editor-container .ql-editor {
           min-height: 150px;
           line-height: 1.6;
+        }
+        .rich-editor-container .ql-editor img {
+          max-width: 100%;
+          height: auto;
+          display: block;
+          margin: 10px 0;
         }
         .rich-editor-container .ql-toolbar {
           border-radius: 8px 8px 0 0;
