@@ -2035,16 +2035,36 @@ const App = () => {
       }
       if (section.type === 'image') {
         const updateField = (field, value) => setSelectedDrug({...selectedDrug, proSections: selectedDrug.proSections.map(s=>s.id===section.id?{...s,[field]:value}:s)});
+        const handleImageFileUpload = (e) => {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              updateField('imageUrl', event.target.result);
+            };
+            reader.readAsDataURL(file);
+          }
+        };
         return (
           <div className="my-8 w-full">
             <div className="border-2 border-dashed border-purple-300 rounded-lg p-6 bg-purple-50/30">
               {isEditing ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-bold text-purple-700 mb-2">URL de la Imagen</label>
+                    <label className="block text-sm font-bold text-purple-700 mb-2">Subir Imagen desde el ordenador</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageFileUpload}
+                      className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200"
+                    />
+                  </div>
+                  <div className="text-center text-xs text-slate-400">— o pegar URL —</div>
+                  <div>
+                    <label className="block text-sm font-bold text-purple-700 mb-2">URL de la Imagen (opcional)</label>
                     <input
                       type="text"
-                      value={section.imageUrl || ''}
+                      value={section.imageUrl?.startsWith('data:') ? '' : (section.imageUrl || '')}
                       onChange={e => updateField('imageUrl', e.target.value)}
                       placeholder="https://ejemplo.com/imagen.jpg"
                       className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -2060,10 +2080,18 @@ const App = () => {
                       className="w-full px-3 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
+                  {section.imageUrl && (
+                    <button
+                      onClick={() => updateField('imageUrl', '')}
+                      className="text-sm text-rose-600 hover:text-rose-800 flex items-center gap-1"
+                    >
+                      <Trash2 size={14}/> Eliminar imagen
+                    </button>
+                  )}
                 </div>
               ) : null}
               {section.imageUrl && (
-                <div className="mt-4">
+                <div className={isEditing ? "mt-4" : ""}>
                   <img
                     src={section.imageUrl}
                     alt={section.caption || 'Imagen de posología'}
