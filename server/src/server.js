@@ -61,9 +61,9 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing - increased limit for base64 images
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Rate limiting
 const limiter = rateLimit({
