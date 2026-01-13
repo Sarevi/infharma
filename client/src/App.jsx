@@ -7,7 +7,7 @@ import {
   Search, ChevronRight, ChevronDown, X, Plus, Minus, Trash2, Save,
   Edit3, LogOut, Settings, ExternalLink, XCircle, GripVertical,
   Menu, MoreHorizontal, Check, AlertCircle, HelpCircle,
-  ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle, Download,
+  ArrowUpRight, ArrowLeft, ArrowRight, MessageCircle, Download, Upload,
   Mail, Loader,
 
   // Herramientas
@@ -334,6 +334,149 @@ const CreateAreaModal = ({ isOpen, onClose, onConfirm, existingAreas }) => {
              </div>
           </form>
        </div>
+    </div>
+  );
+};
+
+const ImportDrugsModal = ({ isOpen, onClose, onImport }) => {
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState('');
+  const [parsedDrugs, setParsedDrugs] = useState([]);
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split('\n');
+    if (lines.length < 2) return [];
+
+    const headers = lines[0].split(';').map(h => h.trim().toLowerCase());
+    const drugs = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(';').map(v => v.trim());
+      if (values.length >= 1 && values[0]) {
+        const drug = {};
+        headers.forEach((header, idx) => {
+          const value = values[idx] || '';
+          if (header === 'nombre' || header === 'name') drug.name = value;
+          else if (header === 'dci' || header === 'principio activo') drug.dci = value;
+          else if (header === 'area' || header === 'área' || header === 'system') drug.system = value;
+          else if (header === 'patologia' || header === 'patología' || header === 'subarea') drug.subArea = value;
+          else if (header === 'tipo' || header === 'type') drug.type = value;
+          else if (header === 'presentacion' || header === 'presentación' || header === 'presentation') drug.presentation = value;
+        });
+        if (drug.name) drugs.push(drug);
+      }
+    }
+    return drugs;
+  };
+
+  const handleTextChange = (text) => {
+    setImportText(text);
+    setImportError('');
+    try {
+      const drugs = parseCSV(text);
+      setParsedDrugs(drugs);
+      if (drugs.length === 0 && text.trim()) {
+        setImportError('No se pudieron parsear los datos. Asegúrate de usar el formato correcto.');
+      }
+    } catch (e) {
+      setImportError('Error al parsear: ' + e.message);
+      setParsedDrugs([]);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => handleTextChange(event.target.result);
+      reader.readAsText(file);
+    }
+  };
+
+  const handleImport = () => {
+    if (parsedDrugs.length > 0) {
+      onImport(parsedDrugs);
+      setImportText('');
+      setParsedDrugs([]);
+      onClose();
+    }
+  };
+
+  const downloadTemplate = () => {
+    const template = `nombre;dci;area;patologia;tipo;presentacion
+Ejemplo Medicamento;Principio Activo;Digestivo;Enfermedad Crohn;Biológico;100mg/ml jeringa
+Otro Fármaco;Otro DCI;Cardiología;Hipertensión;Oral;50mg comprimidos`;
+    const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'plantilla_medicamentos.csv';
+    link.click();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center backdrop-blur-sm animate-in fade-in">
+      <div className="bg-white rounded-xl shadow-2xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+          <Upload className="text-emerald-600"/> Importar Medicamentos
+        </h3>
+
+        <div className="mb-4 p-3 bg-emerald-50 rounded-lg text-sm text-emerald-800">
+          <p className="font-bold mb-1">Formato CSV (separado por punto y coma):</p>
+          <code className="text-xs bg-emerald-100 p-1 rounded block overflow-x-auto">
+            nombre;dci;area;patologia;tipo;presentacion
+          </code>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          <button onClick={downloadTemplate} className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200 flex items-center gap-1">
+            <Download size={16}/> Descargar Plantilla CSV
+          </button>
+          <label className="px-3 py-2 bg-indigo-100 text-indigo-700 rounded-lg text-sm hover:bg-indigo-200 flex items-center gap-1 cursor-pointer">
+            <Upload size={16}/> Subir archivo CSV
+            <input type="file" accept=".csv,.txt" onChange={handleFileUpload} className="hidden"/>
+          </label>
+        </div>
+
+        <textarea
+          value={importText}
+          onChange={(e) => handleTextChange(e.target.value)}
+          className="w-full h-40 p-3 border border-slate-300 rounded-lg font-mono text-sm mb-3"
+          placeholder="Pega aquí los datos en formato CSV o sube un archivo..."
+        />
+
+        {importError && <p className="text-rose-600 text-sm mb-3">{importError}</p>}
+
+        {parsedDrugs.length > 0 && (
+          <div className="mb-4">
+            <p className="text-sm font-bold text-emerald-700 mb-2">✓ {parsedDrugs.length} medicamentos detectados:</p>
+            <div className="max-h-32 overflow-y-auto bg-slate-50 rounded-lg p-2 text-xs">
+              {parsedDrugs.map((d, i) => (
+                <div key={i} className="py-1 border-b border-slate-200 last:border-0">
+                  <span className="font-bold">{d.name}</span>
+                  {d.dci && <span className="text-slate-500"> - {d.dci}</span>}
+                  {d.system && <span className="text-indigo-600"> [{d.system}]</span>}
+                  {d.subArea && <span className="text-emerald-600"> ({d.subArea})</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg">
+            Cancelar
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={parsedDrugs.length === 0}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700"
+          >
+            Importar {parsedDrugs.length > 0 ? `(${parsedDrugs.length})` : ''}
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1425,6 +1568,7 @@ const App = () => {
   const [showCalculator, setShowCalculator] = useState(false);
   const [expandedAreas, setExpandedAreas] = useState({});
   const [showCreateArea, setShowCreateArea] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showCreateSubArea, setShowCreateSubArea] = useState(false);
   const [selectedAreaForSubArea, setSelectedAreaForSubArea] = useState('');
   const [customAreas, setCustomAreas] = useState({});
@@ -1907,6 +2051,41 @@ const App = () => {
       setCustomAreas(newAreas);
       setExpandedAreas({...expandedAreas, [name]: true});
       saveCustomAreasToDb(newAreas);
+    }
+  };
+
+  const handleBulkImport = async (drugsToImport) => {
+    try {
+      const response = await drugsAPI.bulkImportDrugs(drugsToImport);
+      if (response.success) {
+        // Actualizar la lista de medicamentos
+        const refreshResponse = await drugsAPI.getDrugs();
+        if (refreshResponse.success) {
+          setData(refreshResponse.drugs);
+        }
+        // Crear áreas y subáreas si no existen
+        const newAreas = { ...customAreas };
+        drugsToImport.forEach(drug => {
+          const area = drug.system || drug.area;
+          const subArea = drug.subArea || drug.patologia;
+          if (area) {
+            if (!newAreas[area]) {
+              newAreas[area] = { subAreas: [] };
+            }
+            if (subArea && !newAreas[area].subAreas.includes(subArea)) {
+              newAreas[area].subAreas.push(subArea);
+            }
+          }
+        });
+        setCustomAreas(newAreas);
+        saveCustomAreasToDb(newAreas);
+        alert(`✅ ${response.message}`);
+      } else {
+        alert(`❌ Error: ${response.message}`);
+      }
+    } catch (error) {
+      console.error('Error importing drugs:', error);
+      alert(`❌ Error al importar: ${error.message}`);
     }
   };
 
@@ -2559,6 +2738,7 @@ const App = () => {
       <SettingsModal isOpen={showSettings} onClose={()=>setShowSettings(false)} settings={settings} onSave={handleSaveSettings}/>
       <CalculatorsModal isOpen={showCalculator} onClose={()=>setShowCalculator(false)}/>
       <CreateAreaModal isOpen={showCreateArea} onClose={()=>setShowCreateArea(false)} onConfirm={handleCreateArea} existingAreas={Array.from(new Set([...data.map(d=>d.system),...Object.keys(customAreas)])).sort()}/>
+      <ImportDrugsModal isOpen={showImportModal} onClose={()=>setShowImportModal(false)} onImport={handleBulkImport}/>
       <CreateSubAreaModal isOpen={showCreateSubArea} onClose={()=>setShowCreateSubArea(false)} onConfirm={handleCreateSubArea} areaName={selectedAreaForSubArea}/>
       <RenameModal
         isOpen={showRenameModal}
@@ -2691,8 +2871,9 @@ const App = () => {
                  <div className="max-w-6xl mx-auto pt-12 px-8 pb-20">
                     <h1 className="text-4xl font-extrabold text-slate-900 mb-2">HOSPITAL {user?.hospital || settings.hospitalName || 'Hospital'}</h1>
                     <p className="text-slate-500 mb-10">Panel de Control • {user?.name || settings.pharmacistName || 'Usuario'}</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
                        <div onClick={() => setShowCreateArea(true)} className="bg-indigo-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:bg-indigo-700 transition-colors flex flex-col justify-between min-h-[160px] relative overflow-hidden group"><div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110"><FolderPlus size={100}/></div><div className="p-3 bg-white/20 w-fit rounded-lg mb-4"><Plus size={24}/></div><div><p className="font-bold text-lg">Nueva Área</p><p className="text-indigo-200 text-sm">Crear carpeta</p></div></div>
+                       <div onClick={() => setShowImportModal(true)} className="bg-emerald-600 rounded-xl p-6 text-white shadow-lg cursor-pointer hover:bg-emerald-700 transition-colors flex flex-col justify-between min-h-[160px] relative overflow-hidden group"><div className="absolute right-0 bottom-0 opacity-10 transform translate-x-4 translate-y-4 group-hover:scale-110"><Upload size={100}/></div><div className="p-3 bg-white/20 w-fit rounded-lg mb-4"><Upload size={24}/></div><div><p className="font-bold text-lg">Importar</p><p className="text-emerald-200 text-sm">Cargar desde CSV</p></div></div>
                        <div onClick={() => handleOpenLink('https://www.aemps.gob.es/medicamentos-de-uso-humano/')} className="bg-white rounded-xl p-6 border shadow-sm cursor-pointer hover:border-rose-300 hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] group"><div className="flex justify-between items-start"><div className="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-100 transition-colors"><AlertCircle size={24}/></div><ExternalLink size={16} className="text-slate-300"/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg leading-tight">Alertas Seguridad</p><p className="text-slate-500 text-sm mt-1">Web AEMPS Humana</p></div></div>
                        <div onClick={() => handleOpenLink('https://cima.aemps.es/cima/publico/listadesabastecimiento.html')} className="bg-white rounded-xl p-6 border shadow-sm cursor-pointer hover:border-amber-300 hover:shadow-md transition-all flex flex-col justify-between min-h-[160px] group"><div className="flex justify-between items-start"><div className="p-3 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-100 transition-colors"><AlertTriangle size={24}/></div><ExternalLink size={16} className="text-slate-300"/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg">Desabastecimiento</p><p className="text-slate-500 text-sm mt-1">Problemas Suministro</p></div></div>
                        <div className="bg-white rounded-xl p-6 border shadow-sm flex flex-col justify-between min-h-[160px]"><div className="p-3 bg-sky-50 text-sky-600 rounded-lg w-fit"><BarChart3 size={24}/></div><div className="mt-4"><p className="font-bold text-slate-900 text-lg">Estadísticas</p><p className="text-slate-500 text-sm mt-1">{data.length} Fichas activas</p></div></div>
