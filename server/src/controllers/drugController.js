@@ -492,3 +492,85 @@ export const resetDrug = async (req, res) => {
     });
   }
 };
+
+/**
+ * Bulk import drugs from JSON array
+ * Creates multiple drugs at once with basic info
+ */
+export const bulkImportDrugs = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userEmail = req.user.email;
+    const { drugs } = req.body;
+
+    if (!drugs || !Array.isArray(drugs) || drugs.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Se requiere un array de medicamentos'
+      });
+    }
+
+    // Check if user is admin to set isGlobal
+    const isGlobal = userEmail.toLowerCase().trim() === 'admin@infharma.com';
+
+    const createdDrugs = [];
+    const errors = [];
+
+    for (let i = 0; i < drugs.length; i++) {
+      const drugData = drugs[i];
+
+      // Validate required fields
+      if (!drugData.name || !drugData.name.trim()) {
+        errors.push({ index: i, error: 'Nombre requerido', data: drugData });
+        continue;
+      }
+
+      try {
+        const drug = await Drug.create({
+          userId,
+          isGlobal,
+          name: drugData.name.trim(),
+          dci: drugData.dci?.trim() || '',
+          system: drugData.system?.trim() || drugData.area?.trim() || '',
+          subArea: drugData.subArea?.trim() || drugData.patologia?.trim() || '',
+          type: drugData.type?.trim() || drugData.tipo?.trim() || '',
+          presentation: drugData.presentation?.trim() || drugData.presentacion?.trim() || '',
+          proSections: [],
+          patientSections: { intro: '', admin: [], layout: [], customCards: [] }
+        });
+
+        createdDrugs.push(drug.toJSON());
+      } catch (drugError) {
+        errors.push({ index: i, error: drugError.message, data: drugData });
+      }
+    }
+
+    // Emit real-time notification for each created drug if admin
+    if (isGlobal && createdDrugs.length > 0) {
+      const io = req.app.get('io');
+      if (io) {
+        createdDrugs.forEach(drug => {
+          io.emit('drug:created', {
+            drug: { ...drug, hasOriginal: false }
+          });
+        });
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Importados ${createdDrugs.length} medicamentos${errors.length > 0 ? `, ${errors.length} errores` : ''}`,
+      imported: createdDrugs.length,
+      errors: errors.length,
+      errorDetails: errors,
+      drugs: createdDrugs
+    });
+  } catch (error) {
+    console.error('Error importing drugs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error al importar medicamentos',
+      error: error.message
+    });
+  }
+};

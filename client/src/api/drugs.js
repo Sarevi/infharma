@@ -39,3 +39,11 @@ export const resetDrug = async (id) => {
   const response = await apiClient.post(`/drugs/${id}/reset`);
   return response.data;
 };
+
+/**
+ * Bulk import drugs from array
+ */
+export const bulkImportDrugs = async (drugs) => {
+  const response = await apiClient.post('/drugs/bulk-import', { drugs });
+  return response.data;
+};
